@@ -9,6 +9,7 @@ import { BusinessDevView } from '@/components/views/BusinessDevView';
 import { OperationsView } from '@/components/views/OperationsView';
 import { FinanceView } from '@/components/views/FinanceView';
 import { PerformanceView } from '@/components/views/PerformanceView';
+import { AdminView } from '@/components/views/AdminView';
 
 const Index = () => {
   const [activeView, setActiveView] = useState('dashboard');
@@ -33,6 +34,8 @@ const Index = () => {
         return <FinanceView />;
       case 'performance':
         return <PerformanceView />;
+      case 'admin':
+        return <AdminView />;
       default:
         return <DashboardView />;
     }

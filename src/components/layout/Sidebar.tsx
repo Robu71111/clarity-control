@@ -26,9 +26,10 @@ const navItems = [
   { id: 'recruiters', label: 'Recruiters', icon: UserCheck },
   { id: 'account-managers', label: 'Account Managers', icon: Users },
   { id: 'business-dev', label: 'Business Dev', icon: TrendingUp },
-  { id: 'operations', label: 'Operations', icon: Settings },
+  { id: 'operations', label: 'Operations', icon: ClipboardList },
   { id: 'finance', label: 'Finance', icon: DollarSign },
   { id: 'performance', label: 'Performance', icon: Award },
+  { id: 'admin', label: 'Admin', icon: Settings },
 ];
 
 export function Sidebar({ activeView, onViewChange }: SidebarProps) {

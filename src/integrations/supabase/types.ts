@@ -14,7 +14,469 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      am_activities: {
+        Row: {
+          action_taken: string
+          activity_date: string
+          client_id: string
+          created_at: string
+          employee_id: string
+          id: string
+          next_step: string | null
+          outcome: string | null
+        }
+        Insert: {
+          action_taken: string
+          activity_date?: string
+          client_id: string
+          created_at?: string
+          employee_id: string
+          id?: string
+          next_step?: string | null
+          outcome?: string | null
+        }
+        Update: {
+          action_taken?: string
+          activity_date?: string
+          client_id?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+          next_step?: string | null
+          outcome?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "am_activities_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "am_activities_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bd_prospects: {
+        Row: {
+          bd_owner_id: string | null
+          contact_email: string | null
+          contact_name: string | null
+          created_at: string
+          id: string
+          industry: string | null
+          last_follow_up: string | null
+          next_action: string | null
+          probability: number
+          prospect_name: string
+          stage: Database["public"]["Enums"]["bd_stage"]
+          updated_at: string
+        }
+        Insert: {
+          bd_owner_id?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          created_at?: string
+          id?: string
+          industry?: string | null
+          last_follow_up?: string | null
+          next_action?: string | null
+          probability?: number
+          prospect_name: string
+          stage?: Database["public"]["Enums"]["bd_stage"]
+          updated_at?: string
+        }
+        Update: {
+          bd_owner_id?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          created_at?: string
+          id?: string
+          industry?: string | null
+          last_follow_up?: string | null
+          next_action?: string | null
+          probability?: number
+          prospect_name?: string
+          stage?: Database["public"]["Enums"]["bd_stage"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bd_prospects_bd_owner_id_fkey"
+            columns: ["bd_owner_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          account_manager_id: string | null
+          billing_type: string
+          created_at: string
+          id: string
+          last_payment_date: string | null
+          name: string
+          outstanding: number
+          payment_terms: string
+          status: Database["public"]["Enums"]["client_status"]
+          updated_at: string
+        }
+        Insert: {
+          account_manager_id?: string | null
+          billing_type?: string
+          created_at?: string
+          id?: string
+          last_payment_date?: string | null
+          name: string
+          outstanding?: number
+          payment_terms?: string
+          status?: Database["public"]["Enums"]["client_status"]
+          updated_at?: string
+        }
+        Update: {
+          account_manager_id?: string | null
+          billing_type?: string
+          created_at?: string
+          id?: string
+          last_payment_date?: string | null
+          name?: string
+          outstanding?: number
+          payment_terms?: string
+          status?: Database["public"]["Enums"]["client_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_account_manager_id_fkey"
+            columns: ["account_manager_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_scores: {
+        Row: {
+          created_at: string
+          discipline: number
+          employee_id: string
+          final_score: number | null
+          id: string
+          ownership: number
+          productivity: number
+          quality: number
+          score_month: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          discipline?: number
+          employee_id: string
+          final_score?: number | null
+          id?: string
+          ownership?: number
+          productivity?: number
+          quality?: number
+          score_month: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          discipline?: number
+          employee_id?: string
+          final_score?: number | null
+          id?: string
+          ownership?: number
+          productivity?: number
+          quality?: number
+          score_month?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_scores_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employees: {
+        Row: {
+          created_at: string
+          department: string | null
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          role: Database["public"]["Enums"]["employee_role"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          department?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          role: Database["public"]["Enums"]["employee_role"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          department?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          role?: Database["public"]["Enums"]["employee_role"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      invoices: {
+        Row: {
+          amount: number
+          billing_month: string
+          client_id: string
+          created_at: string
+          due_date: string | null
+          id: string
+          invoice_no: string
+          sent_date: string | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          billing_month: string
+          client_id: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          invoice_no: string
+          sent_date?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          billing_month?: string
+          client_id?: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          invoice_no?: string
+          sent_date?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_recruiters: {
+        Row: {
+          assigned_at: string
+          employee_id: string
+          id: string
+          job_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          employee_id: string
+          id?: string
+          job_id: string
+        }
+        Update: {
+          assigned_at?: string
+          employee_id?: string
+          id?: string
+          job_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_recruiters_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_recruiters_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jobs: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          interviews: number
+          offers: number
+          open_date: string
+          priority: Database["public"]["Enums"]["priority_level"]
+          starts: number
+          status: Database["public"]["Enums"]["job_status"]
+          submissions: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          interviews?: number
+          offers?: number
+          open_date?: string
+          priority?: Database["public"]["Enums"]["priority_level"]
+          starts?: number
+          status?: Database["public"]["Enums"]["job_status"]
+          submissions?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          interviews?: number
+          offers?: number
+          open_date?: string
+          priority?: Database["public"]["Enums"]["priority_level"]
+          starts?: number
+          status?: Database["public"]["Enums"]["job_status"]
+          submissions?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          client_id: string
+          created_at: string
+          date_received: string
+          id: string
+          invoice_id: string | null
+          notes: string | null
+          payment_mode: string
+        }
+        Insert: {
+          amount: number
+          client_id: string
+          created_at?: string
+          date_received?: string
+          id?: string
+          invoice_id?: string | null
+          notes?: string | null
+          payment_mode?: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          created_at?: string
+          date_received?: string
+          id?: string
+          invoice_id?: string | null
+          notes?: string | null
+          payment_mode?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recruiter_activities: {
+        Row: {
+          activity_date: string
+          created_at: string
+          employee_id: string
+          feedback_received: number
+          id: string
+          interviews_scheduled: number
+          job_id: string
+          resumes_sourced: number
+          submitted: number
+        }
+        Insert: {
+          activity_date?: string
+          created_at?: string
+          employee_id: string
+          feedback_received?: number
+          id?: string
+          interviews_scheduled?: number
+          job_id: string
+          resumes_sourced?: number
+          submitted?: number
+        }
+        Update: {
+          activity_date?: string
+          created_at?: string
+          employee_id?: string
+          feedback_received?: number
+          id?: string
+          interviews_scheduled?: number
+          job_id?: string
+          resumes_sourced?: number
+          submitted?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recruiter_activities_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recruiter_activities_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +485,30 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      bd_stage:
+        | "Lead"
+        | "Contacted"
+        | "Meeting Scheduled"
+        | "Proposal Sent"
+        | "Negotiation"
+        | "Closed Won"
+        | "Closed Lost"
+      client_status: "Active" | "Hold" | "Inactive"
+      employee_role:
+        | "Account Manager"
+        | "Recruiter"
+        | "Business Development"
+        | "Operations Manager"
+        | "Owner"
+      invoice_status: "Draft" | "Sent" | "Paid" | "Overdue"
+      job_status:
+        | "Open"
+        | "On Hold"
+        | "Interviewing"
+        | "Offer Made"
+        | "Filled"
+        | "Closed - No Hire"
+      priority_level: "High" | "Medium" | "Low"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +635,34 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      bd_stage: [
+        "Lead",
+        "Contacted",
+        "Meeting Scheduled",
+        "Proposal Sent",
+        "Negotiation",
+        "Closed Won",
+        "Closed Lost",
+      ],
+      client_status: ["Active", "Hold", "Inactive"],
+      employee_role: [
+        "Account Manager",
+        "Recruiter",
+        "Business Development",
+        "Operations Manager",
+        "Owner",
+      ],
+      invoice_status: ["Draft", "Sent", "Paid", "Overdue"],
+      job_status: [
+        "Open",
+        "On Hold",
+        "Interviewing",
+        "Offer Made",
+        "Filled",
+        "Closed - No Hire",
+      ],
+      priority_level: ["High", "Medium", "Low"],
+    },
   },
 } as const

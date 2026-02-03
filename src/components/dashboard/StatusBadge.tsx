@@ -1,14 +1,13 @@
 import { cn } from '@/lib/utils';
-import { JobStatus, ClientStatus, InvoiceStatus, BDStage } from '@/types/staffing';
-
-type Status = JobStatus | ClientStatus | InvoiceStatus | BDStage;
 
 interface StatusBadgeProps {
-  status: Status;
+  status: string;
   size?: 'sm' | 'md';
 }
 
-const getStatusStyle = (status: Status): string => {
+const getStatusStyle = (status: string): string => {
+
+
   switch (status) {
     // Job Status
     case 'Open':

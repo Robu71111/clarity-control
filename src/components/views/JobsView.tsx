@@ -1,46 +1,77 @@
 import { DataTable } from '@/components/dashboard/DataTable';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { PriorityBadge } from '@/components/dashboard/PriorityBadge';
-import { jobs } from '@/data/mockData';
-import { Job } from '@/types/staffing';
+import { TableSkeleton, KPICardsSkeleton } from '@/components/dashboard/LoadingSkeletons';
+import { useJobs } from '@/hooks/useJobs';
+
+interface JobRow {
+  id: string;
+  clientName: string;
+  title: string;
+  priority: 'High' | 'Medium' | 'Low';
+  openDate: string;
+  recruiters: string[];
+  submissions: number;
+  interviews: number;
+  offers: number;
+  starts: number;
+  status: string;
+}
 
 export function JobsView() {
+  const { data: jobs, isLoading } = useJobs();
+
+  // Transform data for table display
+  const tableData: JobRow[] = jobs?.map(j => ({
+    id: j.id,
+    clientName: j.client?.name || 'Unknown',
+    title: j.title,
+    priority: j.priority,
+    openDate: j.open_date,
+    recruiters: j.recruiters?.map(r => r.employee?.name || 'Unknown') || [],
+    submissions: j.submissions,
+    interviews: j.interviews,
+    offers: j.offers,
+    starts: j.starts,
+    status: j.status,
+  })) || [];
+
   const columns = [
-    { header: 'Job ID', accessor: 'id' as keyof Job, className: 'font-mono text-xs' },
-    { header: 'Client', accessor: 'clientName' as keyof Job },
-    { header: 'Job Title', accessor: 'title' as keyof Job, className: 'font-medium' },
+    { header: 'Job ID', accessor: (item: JobRow) => item.id.slice(0, 8), className: 'font-mono text-xs' },
+    { header: 'Client', accessor: 'clientName' as keyof JobRow },
+    { header: 'Job Title', accessor: 'title' as keyof JobRow, className: 'font-medium' },
     { 
       header: 'Priority', 
-      accessor: (item: Job) => <PriorityBadge priority={item.priority} />
+      accessor: (item: JobRow) => <PriorityBadge priority={item.priority} />
     },
-    { header: 'Open Date', accessor: 'openDate' as keyof Job },
+    { header: 'Open Date', accessor: 'openDate' as keyof JobRow },
     { 
       header: 'Recruiters', 
-      accessor: (item: Job) => (
+      accessor: (item: JobRow) => (
         <div className="flex flex-wrap gap-1">
-          {item.recruitersAssigned.map((r, i) => (
+          {item.recruiters.length > 0 ? item.recruiters.map((r, i) => (
             <span key={i} className="text-xs bg-muted px-2 py-0.5 rounded">
               {r.split(' ')[0]}
             </span>
-          ))}
+          )) : <span className="text-xs text-muted-foreground">None</span>}
         </div>
       )
     },
-    { header: 'Subs', accessor: 'submissions' as keyof Job, className: 'text-center' },
-    { header: 'Int', accessor: 'interviews' as keyof Job, className: 'text-center' },
-    { header: 'Offers', accessor: 'offers' as keyof Job, className: 'text-center' },
-    { header: 'Starts', accessor: 'starts' as keyof Job, className: 'text-center' },
+    { header: 'Subs', accessor: 'submissions' as keyof JobRow, className: 'text-center' },
+    { header: 'Int', accessor: 'interviews' as keyof JobRow, className: 'text-center' },
+    { header: 'Offers', accessor: 'offers' as keyof JobRow, className: 'text-center' },
+    { header: 'Starts', accessor: 'starts' as keyof JobRow, className: 'text-center' },
     { 
       header: 'Status', 
-      accessor: (item: Job) => <StatusBadge status={item.status} />
+      accessor: (item: JobRow) => <StatusBadge status={item.status} />
     },
   ];
 
   const statusCounts = {
-    open: jobs.filter(j => j.status === 'Open').length,
-    interviewing: jobs.filter(j => j.status === 'Interviewing' || j.status === 'Offer Made').length,
-    filled: jobs.filter(j => j.status === 'Filled').length,
-    closed: jobs.filter(j => j.status === 'Closed - No Hire' || j.status === 'On Hold').length,
+    open: tableData.filter(j => j.status === 'Open').length,
+    interviewing: tableData.filter(j => j.status === 'Interviewing' || j.status === 'Offer Made').length,
+    filled: tableData.filter(j => j.status === 'Filled').length,
+    closed: tableData.filter(j => j.status === 'Closed - No Hire' || j.status === 'On Hold').length,
   };
 
   return (
@@ -51,27 +82,35 @@ export function JobsView() {
       </div>
 
       {/* Status Summary */}
-      <div className="grid grid-cols-4 gap-4">
-        <div className="kpi-card">
-          <p className="text-sm text-muted-foreground">Open Jobs</p>
-          <p className="text-2xl font-bold mt-1 text-accent">{statusCounts.open}</p>
+      {isLoading ? (
+        <KPICardsSkeleton count={4} />
+      ) : (
+        <div className="grid grid-cols-4 gap-4">
+          <div className="kpi-card">
+            <p className="text-sm text-muted-foreground">Open Jobs</p>
+            <p className="text-2xl font-bold mt-1 text-accent">{statusCounts.open}</p>
+          </div>
+          <div className="kpi-card">
+            <p className="text-sm text-muted-foreground">In Progress</p>
+            <p className="text-2xl font-bold mt-1 text-chart-4">{statusCounts.interviewing}</p>
+          </div>
+          <div className="kpi-card">
+            <p className="text-sm text-muted-foreground">Filled</p>
+            <p className="text-2xl font-bold mt-1 text-success">{statusCounts.filled}</p>
+          </div>
+          <div className="kpi-card">
+            <p className="text-sm text-muted-foreground">Closed/Hold</p>
+            <p className="text-2xl font-bold mt-1 text-muted-foreground">{statusCounts.closed}</p>
+          </div>
         </div>
-        <div className="kpi-card">
-          <p className="text-sm text-muted-foreground">In Progress</p>
-          <p className="text-2xl font-bold mt-1 text-chart-4">{statusCounts.interviewing}</p>
-        </div>
-        <div className="kpi-card">
-          <p className="text-sm text-muted-foreground">Filled</p>
-          <p className="text-2xl font-bold mt-1 text-success">{statusCounts.filled}</p>
-        </div>
-        <div className="kpi-card">
-          <p className="text-sm text-muted-foreground">Closed/Hold</p>
-          <p className="text-2xl font-bold mt-1 text-muted-foreground">{statusCounts.closed}</p>
-        </div>
-      </div>
+      )}
 
       {/* Jobs Table */}
-      <DataTable columns={columns} data={jobs} keyField="id" />
+      {isLoading ? (
+        <TableSkeleton rows={8} />
+      ) : (
+        <DataTable columns={columns} data={tableData} keyField="id" />
+      )}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   LayoutDashboard, 
   Users, 
@@ -9,7 +10,8 @@ import {
   DollarSign,
   ClipboardList,
   Award,
-  Building2
+  Building2,
+  LogOut
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -30,6 +32,12 @@ const navItems = [
 ];
 
 export function Sidebar({ activeView, onViewChange }: SidebarProps) {
+  const { user, signOut } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut();
+  };
+
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar border-r border-sidebar-border">
       <div className="flex h-full flex-col">
@@ -66,16 +74,27 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
         </nav>
 
         {/* Footer */}
-        <div className="px-4 py-4 border-t border-sidebar-border">
+        <div className="px-4 py-4 border-t border-sidebar-border space-y-3">
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center">
-              <span className="text-sm font-medium text-sidebar-foreground">OW</span>
+              <span className="text-sm font-medium text-sidebar-foreground">
+                {user?.email?.slice(0, 2).toUpperCase() || 'U'}
+              </span>
             </div>
-            <div>
-              <p className="text-sm font-medium text-sidebar-foreground">Owner View</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-sidebar-foreground truncate">
+                {user?.email || 'User'}
+              </p>
               <p className="text-xs text-sidebar-muted">Admin Access</p>
             </div>
           </div>
+          <button
+            onClick={handleLogout}
+            className="nav-item w-full text-destructive hover:bg-destructive/10"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Sign Out</span>
+          </button>
         </div>
       </div>
     </aside>

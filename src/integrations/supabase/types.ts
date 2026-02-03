@@ -162,6 +162,84 @@ export type Database = {
           },
         ]
       }
+      custom_kpi_fields: {
+        Row: {
+          created_at: string
+          department: string
+          field_name: string
+          field_order: number
+          field_type: Database["public"]["Enums"]["custom_field_type"]
+          id: string
+          is_active: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          department: string
+          field_name: string
+          field_order?: number
+          field_type?: Database["public"]["Enums"]["custom_field_type"]
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          department?: string
+          field_name?: string
+          field_order?: number
+          field_type?: Database["public"]["Enums"]["custom_field_type"]
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      custom_kpi_values: {
+        Row: {
+          created_at: string
+          custom_field_id: string
+          employee_id: string
+          id: string
+          period: string
+          updated_at: string
+          value: string | null
+        }
+        Insert: {
+          created_at?: string
+          custom_field_id: string
+          employee_id: string
+          id?: string
+          period: string
+          updated_at?: string
+          value?: string | null
+        }
+        Update: {
+          created_at?: string
+          custom_field_id?: string
+          employee_id?: string
+          id?: string
+          period?: string
+          updated_at?: string
+          value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_kpi_values_custom_field_id_fkey"
+            columns: ["custom_field_id"]
+            isOneToOne: false
+            referencedRelation: "custom_kpi_fields"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "custom_kpi_values_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_scores: {
         Row: {
           created_at: string
@@ -378,6 +456,36 @@ export type Database = {
           },
         ]
       }
+      kpi_targets: {
+        Row: {
+          created_at: string
+          department: string
+          id: string
+          kpi_name: string
+          period: string
+          target_value: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          department: string
+          id?: string
+          kpi_name: string
+          period?: string
+          target_value?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          department?: string
+          id?: string
+          kpi_name?: string
+          period?: string
+          target_value?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
@@ -429,9 +537,12 @@ export type Database = {
       recruiter_activities: {
         Row: {
           activity_date: string
+          am_submissions: number
           created_at: string
           employee_id: string
+          end_client_submissions: number
           feedback_received: number
+          hired: number
           id: string
           interviews_scheduled: number
           job_id: string
@@ -440,9 +551,12 @@ export type Database = {
         }
         Insert: {
           activity_date?: string
+          am_submissions?: number
           created_at?: string
           employee_id: string
+          end_client_submissions?: number
           feedback_received?: number
+          hired?: number
           id?: string
           interviews_scheduled?: number
           job_id: string
@@ -451,9 +565,12 @@ export type Database = {
         }
         Update: {
           activity_date?: string
+          am_submissions?: number
           created_at?: string
           employee_id?: string
+          end_client_submissions?: number
           feedback_received?: number
+          hired?: number
           id?: string
           interviews_scheduled?: number
           job_id?: string
@@ -494,6 +611,7 @@ export type Database = {
         | "Closed Won"
         | "Closed Lost"
       client_status: "Active" | "Hold" | "Inactive"
+      custom_field_type: "date" | "currency" | "percentage" | "text" | "number"
       employee_role:
         | "Account Manager"
         | "Recruiter"
@@ -646,6 +764,7 @@ export const Constants = {
         "Closed Lost",
       ],
       client_status: ["Active", "Hold", "Inactive"],
+      custom_field_type: ["date", "currency", "percentage", "text", "number"],
       employee_role: [
         "Account Manager",
         "Recruiter",

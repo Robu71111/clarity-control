@@ -1,99 +1,219 @@
 
-
-# Plan: Enhanced Recruiter KPIs + Admin Panel for Custom Field Management
+# Plan: Role-Based Access Control, Password Reset, and Production Deployment
 
 ## Overview
 
-This plan implements two major features:
-1. **Enhanced Recruiter KPIs** with the 6 specific metrics you requested, plus weekly stats per recruiter and editable targets
-2. **Admin Panel** for managing custom KPI fields across all departments with Excel template download/upload functionality
+This plan implements four major features to make your StaffTrack application production-ready:
+1. **Role-Based Access Control (RBAC)** - Department-based permissions for 15-20 users
+2. **Password Reset with Email Verification** - Secure password change for all users
+3. **Production Deployment** - Vercel-ready configuration files
+4. **Security Hardening** - Data protection and secure deployment practices
 
 ---
 
-## Part 1: Enhanced Recruiter KPIs
+## Part 1: Role-Based Access Control (RBAC)
 
-### New KPIs to Track
+### Role & Permission Structure
 
-| KPI | Description | Calculation |
-|-----|-------------|-------------|
-| Open Positions Worked On | Count of unique jobs a recruiter is assigned to | Count from `job_recruiters` table |
-| Job Coverage Ratio | % of assigned jobs with activity | Jobs with submissions / Total assigned jobs |
-| AM Submissions | Submissions to Account Manager | New field in recruiter_activities |
-| End Client Submissions | Submissions to end client | New field in recruiter_activities |
-| Interviews | Interviews scheduled | Existing field |
-| Hired | Candidates placed | Count of jobs with starts > 0 for recruiter |
+| Role | Can View | Can Edit | Admin Access |
+|------|----------|----------|--------------|
+| Admin (Owner) | All departments | All departments | Yes |
+| Account Manager | Dashboard, Clients, Jobs, AM Activities | Own activities only | No |
+| Recruiter | Dashboard, Jobs, Recruiter Activities | Own activities only | No |
+| Business Development | Dashboard, BD Prospects | Own prospects only | No |
+| Operations Manager | Dashboard, Operations, Performance | Operations data | No |
+| Finance | Dashboard, Finance, Clients (read-only) | Finance data only | No |
 
-### Database Changes Required
+### Database Changes
+
+**New Tables:**
 
 ```text
-ALTER TABLE recruiter_activities:
-  + am_submissions (integer, default 0)
-  + end_client_submissions (integer, default 0)
-  + hired (integer, default 0)
-
-NEW TABLE: kpi_targets
+TABLE: user_roles
   - id (uuid, primary key)
-  - department (text) - 'Recruiter', 'Account Manager', 'Business Dev', etc.
-  - kpi_name (text) - e.g., 'Open Positions Worked On'
-  - target_value (numeric)
-  - period (text) - 'weekly' or 'monthly'
+  - user_id (uuid, FK to auth.users, cascade delete)
+  - role (app_role enum)
+  - department_access (text[]) - List of departments user can access
   - created_at, updated_at
+  UNIQUE(user_id, role)
+
+NEW ENUM: app_role
+  - 'admin', 'account_manager', 'recruiter', 'business_dev', 'operations', 'finance', 'viewer'
 ```
 
-### UI Changes to RecruitersView
+**Security-Definer Function (prevents RLS recursion):**
 
-1. **KPI Summary Cards** - Replace current 4-column layout with 6-column grid for new KPIs
-2. **Weekly Stats Table** - Add per-recruiter breakdown with actual vs target
-3. **Editable Targets** - Add inline edit or modal to adjust target values
-4. **Visual Progress Bars** - Show actual/target ratios with color coding
+```text
+FUNCTION: has_role(user_id uuid, role app_role) -> boolean
+  - Checks if user has specified role
+  - Uses SECURITY DEFINER to bypass RLS
+
+FUNCTION: get_user_departments(user_id uuid) -> text[]
+  - Returns array of departments user can access
+  - Used by RLS policies
+```
+
+**Updated RLS Policies:**
+
+- Admin users: Full access to all tables
+- Department users: Access based on `department_access` array
+- All users: Read-only access to common reference data (employees list)
+
+### Admin User Management Interface
+
+**New Component: `UserManagement.tsx`**
+
+- View all registered users
+- Assign/remove roles per user
+- Set department access permissions
+- Deactivate user accounts (soft delete)
+
+**Seeding Initial Admin:**
+
+Your email `niramay@mintextech.com` will be set as the first admin via a database trigger that runs when this email signs up.
 
 ---
 
-## Part 2: Admin Panel for Custom KPI Fields
+## Part 2: Password Reset with Email Verification
 
-### New Database Tables
+### Flow Diagram
 
 ```text
-NEW TABLE: custom_kpi_fields
-  - id (uuid, primary key)
-  - department (text) - Which department this field belongs to
-  - field_name (text) - Display name of the field
-  - field_type (enum) - 'date', 'currency', 'percentage', 'text', 'number'
-  - field_order (integer) - Order in which to display
-  - is_active (boolean)
-  - created_at, updated_at
+User Flow:
+1. User clicks "Forgot Password?" on login page
+2. Enters email address
+3. System sends password reset email via Supabase Auth
+4. User clicks link in email
+5. Redirected to app with reset token
+6. User enters new password
+7. Password updated, user redirected to login
 
-NEW TABLE: custom_kpi_values
-  - id (uuid, primary key)
-  - custom_field_id (uuid, FK to custom_kpi_fields)
-  - employee_id (uuid, FK to employees)
-  - period (text) - e.g., '2026-W05' for week or '2026-01' for month
-  - value (text) - Stored as text, parsed based on field_type
-  - created_at, updated_at
+Profile Password Change:
+1. Logged-in user goes to Settings
+2. Clicks "Change Password"
+3. System sends verification email
+4. User clicks link in email
+5. Enters new password
+6. Password updated
 ```
 
-### Admin Panel Features
+### Implementation
 
-1. **Custom Fields Manager**
-   - View existing custom fields per department
-   - Add new fields (up to 5 per department)
-   - Edit field name and type
-   - Delete unused fields
-   - Drag to reorder
+**New Pages:**
 
-2. **Excel Template Generator**
-   - Download button generates XLSX with:
-     - Standard KPI columns for the department
-     - Custom field columns added dynamically
-     - Employee rows pre-populated
-   - Template updates automatically when custom fields change
+- `ForgotPasswordPage.tsx` - Email input form for password reset
+- `ResetPasswordPage.tsx` - New password form (handles reset token)
+- `SettingsPage.tsx` - User profile with password change option
 
-3. **Excel Upload Processor**
-   - File upload component with drag-drop
-   - Validates data types (dates, currencies, percentages, etc.)
-   - Shows preview of changes before applying
-   - Displays validation errors clearly
-   - Updates both standard and custom KPI values
+**Auth Context Updates:**
+
+- `resetPassword(email)` - Sends reset email
+- `updatePassword(newPassword)` - Updates password after token verification
+
+**Routes:**
+
+```text
+/forgot-password - Forgot password form
+/reset-password - Password reset form (with token)
+/settings - User settings (includes password change)
+```
+
+---
+
+## Part 3: Vercel Production Deployment
+
+### New Configuration Files
+
+**`vercel.json`** - Vercel deployment configuration:
+```json
+{
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" }
+      ]
+    }
+  ]
+}
+```
+
+### Environment Variables for Vercel
+
+You will need to set these in Vercel dashboard:
+
+| Variable | Purpose |
+|----------|---------|
+| `VITE_SUPABASE_URL` | Your Supabase project URL |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase anon key (public) |
+
+### Database Portability Notes
+
+Since you may want to switch cloud database services later:
+
+1. **All SQL migrations are standard PostgreSQL** - compatible with any PostgreSQL hosting (Railway, Neon, AWS RDS, etc.)
+2. **Authentication is through Supabase Auth** - if switching, you'd need to migrate to another auth provider (Auth0, Firebase Auth, etc.)
+3. **RLS policies are Supabase-specific** - would need equivalent row-level security in new provider
+
+---
+
+## Part 4: Security Hardening
+
+### Password Security
+
+- **No plaintext passwords stored** - Supabase Auth handles password hashing with bcrypt
+- **Minimum password length**: 8 characters (enforced in UI and via Supabase settings)
+- **Password strength indicator** - Visual feedback during signup/reset
+
+### Frontend Security
+
+**Environment Variables:**
+- Only `VITE_` prefixed variables are exposed to browser
+- Supabase anon key is designed to be public (RLS protects data)
+- No secret keys in frontend code
+
+**XSS Protection:**
+- React's built-in escaping
+- Content Security Policy headers
+
+**Authentication Guards:**
+- All protected routes check session validity
+- Automatic redirect to login when session expires
+
+### Backend Security (RLS Policies)
+
+**Updated Policies by Table:**
+
+| Table | Admin | Own Department | Other Users |
+|-------|-------|----------------|-------------|
+| employees | Full | Read only | Read only |
+| clients | Full | Full (if AM) | Read only |
+| jobs | Full | Full (if assigned) | Read only |
+| invoices | Full | Full (if Finance) | No access |
+| payments | Full | Full (if Finance) | No access |
+| user_roles | Full | Read own role | No access |
+
+### API Security
+
+- All database calls go through authenticated Supabase client
+- RLS ensures users can only access permitted data
+- No direct database connection strings in frontend
+
+### Audit Logging
+
+**New Table: `audit_logs`**
+- Tracks sensitive operations (role changes, password resets)
+- Records user_id, action, timestamp, IP address (if available)
 
 ---
 
@@ -101,83 +221,53 @@ NEW TABLE: custom_kpi_values
 
 ### Phase 1: Database Schema Updates
 
-**Migration 1: Recruiter Activity Enhancements**
-- Add `am_submissions`, `end_client_submissions`, `hired` columns to `recruiter_activities`
+**Migration includes:**
+- Create `app_role` enum
+- Create `user_roles` table with RLS
+- Create `audit_logs` table
+- Create security-definer functions (`has_role`, `get_user_departments`)
+- Update all existing RLS policies to use role checks
+- Create trigger to auto-assign admin role to `niramay@mintextech.com`
 
-**Migration 2: KPI Targets Table**
-- Create `kpi_targets` table for editable targets
-
-**Migration 3: Custom Fields Tables**
-- Create `custom_kpi_fields` and `custom_kpi_values` tables with proper enums
-
-### Phase 2: New Hooks and Data Layer
+### Phase 2: Authentication Enhancements
 
 **Files to Create:**
-- `src/hooks/useKPITargets.ts` - CRUD for KPI targets
-- `src/hooks/useCustomFields.ts` - Manage custom KPI field definitions
-- `src/hooks/useCustomFieldValues.ts` - Store/retrieve custom field data
-- `src/hooks/useRecruiterKPIs.ts` - Calculate the 6 new recruiter KPIs
+- `src/pages/ForgotPasswordPage.tsx`
+- `src/pages/ResetPasswordPage.tsx`
+- `src/pages/SettingsPage.tsx`
+- `src/hooks/useUserRole.ts` - Fetch current user's role and permissions
 
-### Phase 3: Enhanced Recruiters View
+**Files to Update:**
+- `src/contexts/AuthContext.tsx` - Add password reset functions
+- `src/pages/AuthPage.tsx` - Add "Forgot Password?" link
+- `src/App.tsx` - Add new routes
 
-**Updates to `RecruitersView.tsx`:**
-- Add 6 new KPI cards with progress indicators
-- Create weekly breakdown table per recruiter
-- Add editable target functionality with inline edit/modal
-- Include trend indicators (vs last week)
+### Phase 3: Admin User Management
 
-**New Components:**
-- `src/components/dashboard/KPIProgressCard.tsx` - Card with actual/target progress bar
-- `src/components/dashboard/EditableTarget.tsx` - Inline editable target input
-- `src/components/dashboard/RecruiterWeeklyTable.tsx` - Weekly stats breakdown
+**Files to Create:**
+- `src/components/admin/UserManagement.tsx` - User list with role assignment
+- `src/components/admin/RoleSelect.tsx` - Dropdown for role selection
+- `src/components/admin/DepartmentAccessEditor.tsx` - Multi-select for departments
 
-### Phase 4: Admin Panel
+**Files to Update:**
+- `src/components/views/AdminView.tsx` - Add User Management tab
+- `src/components/layout/Sidebar.tsx` - Conditionally show menu items based on role
 
-**New View:**
-- `src/components/views/AdminView.tsx` - Main admin panel container
+### Phase 4: Role-Based UI
 
-**New Components:**
-- `src/components/admin/CustomFieldsManager.tsx` - CRUD for custom fields
-- `src/components/admin/FieldTypeSelect.tsx` - Dropdown for field type selection
-- `src/components/admin/ExcelTemplateDownload.tsx` - Generate and download XLSX
-- `src/components/admin/ExcelUpload.tsx` - Upload and validate Excel data
-- `src/components/admin/UploadPreview.tsx` - Preview changes before applying
-- `src/components/admin/DepartmentTabs.tsx` - Tab navigation between departments
+**Files to Update:**
+- `src/pages/Index.tsx` - Filter views based on user role
+- `src/components/layout/Sidebar.tsx` - Show/hide nav items per role
+- All view components - Add permission checks for edit/delete actions
 
-**Sidebar Update:**
-- Add "Admin" navigation item with Settings icon
+### Phase 5: Vercel Configuration
 
-### Phase 5: Excel Template Generation
+**Files to Create:**
+- `vercel.json` - Deployment configuration with security headers
 
-**Technology:**
-- Use `xlsx` library (SheetJS) for Excel generation and parsing
-- Client-side template generation (no server needed)
-
-**Template Structure:**
-```text
-Row 1: Headers (Employee Name, KPI1, KPI2, ..., Custom1, Custom2, ...)
-Row 2+: One row per employee with editable cells
-```
-
-**Features:**
-- Date columns formatted as dates
-- Currency columns with $ prefix
-- Percentage columns with % suffix
-- Validation rules embedded where possible
-
-### Phase 6: Excel Upload Processing
-
-**Validation Rules:**
-- Date fields: Must be valid date format
-- Currency: Must be numeric (strip $ and commas)
-- Percentage: Must be 0-100 (strip %)
-- Number: Must be numeric
-- Text: Max 500 characters
-
-**Error Handling:**
-- Row-by-row validation
-- Clear error messages with row/column reference
-- Option to skip invalid rows or abort entire upload
+**Files to Update:**
+- `index.html` - Update title, meta tags for production
+- `vite.config.ts` - Ensure production build settings
 
 ---
 
@@ -185,121 +275,60 @@ Row 2+: One row per employee with editable cells
 
 ```text
 src/
+├── contexts/
+│   └── AuthContext.tsx (update - add password reset)
+├── hooks/
+│   └── useUserRole.ts (new - role checking)
+├── pages/
+│   ├── ForgotPasswordPage.tsx (new)
+│   ├── ResetPasswordPage.tsx (new)
+│   └── SettingsPage.tsx (new)
 ├── components/
 │   ├── admin/
-│   │   ├── CustomFieldsManager.tsx
-│   │   ├── FieldTypeSelect.tsx
-│   │   ├── ExcelTemplateDownload.tsx
-│   │   ├── ExcelUpload.tsx
-│   │   ├── UploadPreview.tsx
-│   │   └── DepartmentTabs.tsx
-│   ├── dashboard/
-│   │   ├── KPIProgressCard.tsx (new)
-│   │   ├── EditableTarget.tsx (new)
-│   │   └── RecruiterWeeklyTable.tsx (new)
-│   └── views/
-│       ├── AdminView.tsx (new)
-│       └── RecruitersView.tsx (update)
-├── hooks/
-│   ├── useKPITargets.ts (new)
-│   ├── useCustomFields.ts (new)
-│   ├── useCustomFieldValues.ts (new)
-│   └── useRecruiterKPIs.ts (new)
-└── lib/
-    └── excelUtils.ts (new) - Excel generation/parsing helpers
+│   │   ├── UserManagement.tsx (new)
+│   │   ├── RoleSelect.tsx (new)
+│   │   └── DepartmentAccessEditor.tsx (new)
+│   └── layout/
+│       └── Sidebar.tsx (update - role-based nav)
+└── App.tsx (update - add routes)
+
+vercel.json (new)
 ```
 
 ---
 
-## Technical Considerations
+## Supabase Changes Summary (for Portability)
 
-### Excel Library
-- **xlsx (SheetJS)**: Most popular, works in browser, good documentation
-- Install: `npm install xlsx`
+All database changes are in standard PostgreSQL SQL:
 
-### Custom Field Type Enum
 ```sql
-CREATE TYPE custom_field_type AS ENUM (
-  'date',
-  'currency', 
-  'percentage',
-  'text',
-  'number'
-);
+-- Portable migrations you can run on any PostgreSQL database:
+
+1. CREATE TYPE app_role AS ENUM (...)
+2. CREATE TABLE user_roles (...)
+3. CREATE TABLE audit_logs (...)
+4. CREATE FUNCTION has_role(...) - Security definer
+5. CREATE FUNCTION get_user_departments(...)
+6. ALTER existing RLS policies to use role checks
+7. INSERT admin role for niramay@mintextech.com (trigger-based)
 ```
 
-### Field Limit Enforcement
-- Database constraint or application-level check
-- Maximum 5 custom fields per department
-- Clear error message when limit reached
-
-### Data Integrity
-- Foreign key constraints on all references
-- RLS policies for authenticated users
-- Validation triggers for field type consistency
+If you migrate away from Supabase:
+- Export the `auth.users` table data
+- Set up equivalent authentication in new provider
+- The `user_roles` and business tables transfer directly
+- RLS policies would need recreation in new provider's syntax
 
 ---
 
-## UI Mockup: Enhanced Recruiter KPIs
+## Security Checklist
 
-```text
-+------------------------------------------------------------------+
-| Recruiter Performance                                              |
-| Daily activity tracking and KPI summary                            |
-+------------------------------------------------------------------+
-
-+----------+ +----------+ +----------+ +----------+ +----------+ +----------+
-| Open Pos | | Coverage | | AM Subs  | | EC Subs  | | Interviews| | Hired   |
-|    12    | |   75%    | |    45    | |    32    | |    28    | |    5    |
-| Target:15| |Target:80%| |Target:50 | |Target:40 | |Target:30 | |Target:8 |
-| [====  ] | | [======] | | [=====]  | | [====  ] | | [=====]  | | [===  ] |
-+----------+ +----------+ +----------+ +----------+ +----------+ +----------+
-
-+------------------------------------------------------------------+
-| Weekly Stats by Recruiter                          [Edit Targets] |
-+------------------------------------------------------------------+
-| Recruiter    | Open Pos | Coverage | AM Sub | EC Sub | Int | Hired|
-|--------------|----------|----------|--------|--------|-----|------|
-| John Smith   |    5     |   80%    |   18   |   12   | 10  |  2   |
-| Jane Doe     |    4     |   75%    |   15   |   10   |  8  |  1   |
-| Mike Wilson  |    3     |   66%    |   12   |   10   | 10  |  2   |
-+------------------------------------------------------------------+
-```
-
----
-
-## UI Mockup: Admin Panel
-
-```text
-+------------------------------------------------------------------+
-| Admin Panel                                                        |
-| Manage KPIs and Custom Fields                                      |
-+------------------------------------------------------------------+
-
-[Recruiters] [Account Managers] [Business Dev] [Operations] [Finance]
-
-+------------------------------------------------------------------+
-| Custom Fields for Recruiters                    [+ Add Field] (3/5)|
-+------------------------------------------------------------------+
-| #  | Field Name          | Type       | Actions                   |
-|----|---------------------|------------|---------------------------|
-| 1  | Client Feedback     | Text       | [Edit] [Delete]           |
-| 2  | Bonus Amount        | Currency   | [Edit] [Delete]           |
-| 3  | Attendance Rate     | Percentage | [Edit] [Delete]           |
-+------------------------------------------------------------------+
-
-+---------------------------+  +---------------------------+
-| Download Excel Template   |  | Upload KPI Data           |
-| [Download for Recruiters] |  | [Drop file here or click] |
-+---------------------------+  +---------------------------+
-```
-
----
-
-## Security Considerations
-
-- All new tables will have RLS enabled
-- Only authenticated users can access admin features
-- Excel uploads validated both client-side and server-side
-- Custom field values sanitized before storage
-
+- No passwords stored in code or logs
+- Environment variables used for all secrets
+- Row-Level Security on all tables
+- Role checks on all sensitive operations
+- Security headers configured for production
+- HTTPS enforced by Vercel
+- XSS protection via React and headers
+- Audit logging for admin actions
+- Session management via Supabase Auth

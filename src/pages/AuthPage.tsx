@@ -148,7 +148,7 @@ export function AuthPage() {
             </Button>
           </form>
 
-          <div className="text-center">
+          <div className="text-center space-y-2">
             <button
               type="button"
               onClick={() => setIsLogin(!isLogin)}
@@ -158,6 +158,16 @@ export function AuthPage() {
                 ? "Don't have an account? Sign up" 
                 : 'Already have an account? Sign in'}
             </button>
+            {isLogin && (
+              <div>
+                <a
+                  href="/forgot-password"
+                  className="text-sm text-primary hover:underline"
+                >
+                  Forgot your password?
+                </a>
+              </div>
+            )}
           </div>
         </div>
       </div>

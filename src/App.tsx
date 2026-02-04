@@ -5,6 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AuthPage } from "./pages/AuthPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -26,15 +29,21 @@ function AppContent() {
     );
   }
 
-  if (!user) {
-    return <AuthPage />;
-  }
-
+  // Public routes (no auth required)
   return (
     <Routes>
-      <Route path="/" element={<Index />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      {user ? (
+        <>
+          <Route path="/" element={<Index />} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </>
+      ) : (
+        <Route path="/" element={<AuthPage />} />
+      )}
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-      <Route path="*" element={<NotFound />} />
+      <Route path="*" element={user ? <NotFound /> : <AuthPage />} />
     </Routes>
   );
 }

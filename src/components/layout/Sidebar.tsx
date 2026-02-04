@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/hooks/useUserRole';
 import { 
   LayoutDashboard, 
   Users, 
@@ -11,8 +12,10 @@ import {
   ClipboardList,
   Award,
   Building2,
-  LogOut
+  LogOut,
+  UserCog
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface SidebarProps {
   activeView: string;
@@ -34,10 +37,18 @@ const navItems = [
 
 export function Sidebar({ activeView, onViewChange }: SidebarProps) {
   const { user, signOut } = useAuth();
+  const { role, isAdmin, canAccessView, isLoading } = useUserRole();
+  const navigate = useNavigate();
 
   const handleLogout = async () => {
     await signOut();
   };
+
+  // Filter nav items based on user permissions
+  const visibleNavItems = navItems.filter((item) => {
+    if (isLoading) return true; // Show all while loading
+    return canAccessView(item.id);
+  });
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar border-r border-sidebar-border">
@@ -55,7 +66,7 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeView === item.id;
             return (
@@ -86,9 +97,18 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
               <p className="text-sm font-medium text-sidebar-foreground truncate">
                 {user?.email || 'User'}
               </p>
-              <p className="text-xs text-sidebar-muted">Admin Access</p>
+              <p className="text-xs text-sidebar-muted">
+                {isAdmin ? 'Admin' : role ? role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'No Role'}
+              </p>
             </div>
           </div>
+          <button
+            onClick={() => navigate('/settings')}
+            className="nav-item w-full"
+          >
+            <UserCog className="h-4 w-4" />
+            <span>Settings</span>
+          </button>
           <button
             onClick={handleLogout}
             className="nav-item w-full text-destructive hover:bg-destructive/10"

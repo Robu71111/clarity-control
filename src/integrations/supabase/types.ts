@@ -634,6 +634,7 @@ export type Database = {
         Row: {
           created_at: string
           department_access: string[] | null
+          department_edit_access: string[] | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
           updated_at: string
@@ -642,6 +643,7 @@ export type Database = {
         Insert: {
           created_at?: string
           department_access?: string[] | null
+          department_edit_access?: string[] | null
           id?: string
           role: Database["public"]["Enums"]["app_role"]
           updated_at?: string
@@ -650,6 +652,7 @@ export type Database = {
         Update: {
           created_at?: string
           department_access?: string[] | null
+          department_edit_access?: string[] | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string

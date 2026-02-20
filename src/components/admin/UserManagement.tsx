@@ -5,11 +5,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { RoleSelect } from './RoleSelect';
 import { DepartmentAccessEditor } from './DepartmentAccessEditor';
-import { Users, Shield, RefreshCw } from 'lucide-react';
+import { Users, Shield, RefreshCw, Search, ShieldCheck, ShieldOff } from 'lucide-react';
 import type { AppRole } from '@/hooks/useUserRole';
+
+interface AuthUser {
+  id: string;
+  email: string;
+  created_at: string;
+}
 
 interface UserWithRole {
   id: string;
@@ -17,270 +23,228 @@ interface UserWithRole {
   created_at: string;
   role: AppRole | null;
   department_access: string[];
+  department_edit_access: string[];
   role_id: string | null;
 }
 
 export function UserManagement() {
   const queryClient = useQueryClient();
-  const [editingUser, setEditingUser] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [accessDialogUser, setAccessDialogUser] = useState<UserWithRole | null>(null);
 
-  // Fetch all users with their roles
-  const { data: users, isLoading, refetch } = useQuery({
-    queryKey: ['admin-users'],
+  // Fetch auth users via edge function
+  const { data: authUsers } = useQuery({
+    queryKey: ['admin-auth-users'],
     queryFn: async () => {
-      // First get all user roles
-      const { data: roles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('*');
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) return [];
 
-      if (rolesError) throw rolesError;
-
-      // Create a map of user_id to role info
-      const roleMap = new Map(roles?.map(r => [r.user_id, r]) || []);
-
-      // Get unique user IDs from roles
-      const userIds = [...new Set(roles?.map(r => r.user_id) || [])];
-
-      // Since we can't query auth.users directly, we'll work with what we have
-      // Users without roles won't appear here - they need to be assigned a role first
-      return userIds.map(userId => {
-        const roleInfo = roleMap.get(userId);
-        return {
-          id: userId,
-          email: 'User ' + userId.slice(0, 8), // Placeholder - in production, join with profiles table
-          created_at: roleInfo?.created_at || new Date().toISOString(),
-          role: roleInfo?.role as AppRole || null,
-          department_access: roleInfo?.department_access || [],
-          role_id: roleInfo?.id || null,
-        };
-      }) as UserWithRole[];
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-users`,
+        { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
+      );
+      if (!res.ok) return [];
+      return (await res.json()) as AuthUser[];
     },
   });
 
-  // Update user role
-  const updateRoleMutation = useMutation({
-    mutationFn: async ({ userId, role, departmentAccess }: { userId: string; role: AppRole; departmentAccess: string[] }) => {
-      // Check if user already has a role entry
-      const { data: existing } = await supabase
-        .from('user_roles')
-        .select('id')
-        .eq('user_id', userId)
-        .maybeSingle();
+  // Fetch user roles
+  const { data: users, isLoading, refetch } = useQuery({
+    queryKey: ['admin-users'],
+    queryFn: async () => {
+      const { data: roles, error } = await supabase.from('user_roles').select('*');
+      if (error) throw error;
+
+      const authMap = new Map((authUsers || []).map(u => [u.id, u]));
+      const roleMap = new Map(roles?.map(r => [r.user_id, r]) || []);
+      const allUserIds = [...new Set([...roleMap.keys(), ...(authUsers || []).map(u => u.id)])];
+
+      return allUserIds.map(userId => {
+        const roleInfo = roleMap.get(userId);
+        const authInfo = authMap.get(userId);
+        return {
+          id: userId,
+          email: authInfo?.email || 'User ' + userId.slice(0, 8),
+          created_at: roleInfo?.created_at || authInfo?.created_at || new Date().toISOString(),
+          role: (roleInfo?.role as AppRole) || null,
+          department_access: roleInfo?.department_access || [],
+          department_edit_access: (roleInfo as any)?.department_edit_access || [],
+          role_id: roleInfo?.id || null,
+        } as UserWithRole;
+      });
+    },
+    enabled: authUsers !== undefined,
+  });
+
+  // Make/Remove admin mutation
+  const toggleAdminMutation = useMutation({
+    mutationFn: async ({ userId, makeAdmin }: { userId: string; makeAdmin: boolean }) => {
+      const { data: existing } = await supabase.from('user_roles').select('id').eq('user_id', userId).maybeSingle();
+      const newRole = makeAdmin ? 'admin' : 'viewer';
+      const allDepts = makeAdmin ? ['Dashboard', 'Recruiter', 'Account Manager', 'Account Manager View', 'Business Development', 'Operations Manager', 'Finance', 'Performance'] : [];
 
       if (existing) {
-        // Update existing role
-        const { error } = await supabase
-          .from('user_roles')
-          .update({ role, department_access: departmentAccess })
-          .eq('user_id', userId);
+        const { error } = await supabase.from('user_roles').update({ role: newRole, department_access: allDepts, department_edit_access: allDepts } as any).eq('user_id', userId);
         if (error) throw error;
       } else {
-        // Insert new role
-        const { error } = await supabase
-          .from('user_roles')
-          .insert({ user_id: userId, role, department_access: departmentAccess });
+        const { error } = await supabase.from('user_roles').insert({ user_id: userId, role: newRole, department_access: allDepts, department_edit_access: allDepts } as any);
         if (error) throw error;
       }
 
-      // Log audit event
-      await supabase.rpc('log_audit_event', {
-        _action: 'role_updated',
-        _table_name: 'user_roles',
-        _record_id: userId,
-        _new_values: { role, department_access: departmentAccess },
-      });
+      await supabase.rpc('log_audit_event', { _action: makeAdmin ? 'made_admin' : 'removed_admin', _table_name: 'user_roles', _record_id: userId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       toast({ title: 'Role updated successfully' });
-      setEditingUser(null);
     },
-    onError: (error: Error) => {
-      toast({
-        title: 'Failed to update role',
-        description: error.message,
-        variant: 'destructive',
-      });
-    },
+    onError: (e: Error) => toast({ title: 'Failed to update role', description: e.message, variant: 'destructive' }),
   });
 
-  // Delete user role
-  const deleteRoleMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      const { error } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId);
-      if (error) throw error;
+  // Save access mutation
+  const saveAccessMutation = useMutation({
+    mutationFn: async ({ userId, viewAccess, editAccess }: { userId: string; viewAccess: string[]; editAccess: string[] }) => {
+      const { data: existing } = await supabase.from('user_roles').select('id').eq('user_id', userId).maybeSingle();
 
-      // Log audit event
-      await supabase.rpc('log_audit_event', {
-        _action: 'role_deleted',
-        _table_name: 'user_roles',
-        _record_id: userId,
-      });
+      if (existing) {
+        const { error } = await supabase.from('user_roles').update({ department_access: viewAccess, department_edit_access: editAccess } as any).eq('user_id', userId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('user_roles').insert({ user_id: userId, role: 'viewer', department_access: viewAccess, department_edit_access: editAccess } as any);
+        if (error) throw error;
+      }
+
+      await supabase.rpc('log_audit_event', { _action: 'access_updated', _table_name: 'user_roles', _record_id: userId, _new_values: { department_access: viewAccess, department_edit_access: editAccess } });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-      toast({ title: 'User role removed' });
+      toast({ title: 'Access updated successfully' });
     },
-    onError: (error: Error) => {
-      toast({
-        title: 'Failed to remove role',
-        description: error.message,
-        variant: 'destructive',
-      });
-    },
+    onError: (e: Error) => toast({ title: 'Failed to update access', description: e.message, variant: 'destructive' }),
   });
+
+  const filtered = (users || []).filter(u =>
+    u.email.toLowerCase().includes(search.toLowerCase()) ||
+    (u.role || '').toLowerCase().includes(search.toLowerCase())
+  );
 
   const formatRole = (role: AppRole | null) => {
     if (!role) return 'No Role';
-    return role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    return role.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   };
 
-  const getRoleBadgeVariant = (role: AppRole | null) => {
-    switch (role) {
-      case 'admin': return 'default';
-      case 'account_manager': return 'secondary';
-      case 'recruiter': return 'outline';
-      case 'business_dev': return 'secondary';
-      case 'finance': return 'outline';
-      case 'operations': return 'secondary';
-      default: return 'outline';
-    }
-  };
+  const MAX_BADGES = 3;
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            <CardTitle>User Management</CardTitle>
+            <div>
+              <CardTitle>User Management</CardTitle>
+              <CardDescription>Manage user roles and department access</CardDescription>
+            </div>
           </div>
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Search users..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 w-48" />
+            </div>
+            <Button variant="outline" size="icon" onClick={() => { queryClient.invalidateQueries({ queryKey: ['admin-auth-users'] }); refetch(); }}>
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-        <CardDescription>
-          Manage user roles and department access permissions. Users appear here after their first sign-in and role assignment.
-        </CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
-        ) : !users?.length ? (
+        ) : !filtered.length ? (
           <div className="text-center py-8 text-muted-foreground">
             <Shield className="h-12 w-12 mx-auto mb-4 opacity-20" />
-            <p>No users with roles yet.</p>
-            <p className="text-sm">Users will appear here after signing up and being assigned a role.</p>
+            <p>No users found.</p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User ID</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Department Access</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-mono text-xs">
-                    {user.id.slice(0, 8)}...
-                  </TableCell>
-                  <TableCell>
-                    {editingUser === user.id ? (
-                      <RoleSelect
-                        value={user.role}
-                        onChange={(role) => {
-                          updateRoleMutation.mutate({
-                            userId: user.id,
-                            role,
-                            departmentAccess: user.department_access,
-                          });
-                        }}
-                      />
-                    ) : (
-                      <Badge variant={getRoleBadgeVariant(user.role)}>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Department Access</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map(user => (
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium text-sm">{user.email}</div>
+                        <div className="text-xs text-muted-foreground">Joined {new Date(user.created_at).toLocaleDateString()}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
                         {formatRole(user.role)}
                       </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {editingUser === user.id ? (
-                      <DepartmentAccessEditor
-                        value={user.department_access}
-                        onChange={(departments) => {
-                          updateRoleMutation.mutate({
-                            userId: user.id,
-                            role: user.role || 'viewer',
-                            departmentAccess: departments,
-                          });
-                        }}
-                      />
-                    ) : (
+                    </TableCell>
+                    <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {user.department_access.length > 0 ? (
-                          user.department_access.map((dept) => (
-                            <Badge key={dept} variant="outline" className="text-xs">
-                              {dept}
-                            </Badge>
-                          ))
+                        {user.department_access.length === 0 ? (
+                          <span className="text-xs text-muted-foreground">None</span>
                         ) : (
-                          <span className="text-muted-foreground text-sm">None</span>
+                          <>
+                            {user.department_access.slice(0, MAX_BADGES).map(dept => (
+                              <Badge key={dept} variant="outline" className="text-xs">{dept}</Badge>
+                            ))}
+                            {user.department_access.length > MAX_BADGES && (
+                              <Badge variant="outline" className="text-xs">+{user.department_access.length - MAX_BADGES} more</Badge>
+                            )}
+                          </>
                         )}
                       </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {new Date(user.created_at).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {editingUser === user.id ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditingUser(null)}
-                      >
-                        Done
-                      </Button>
-                    ) : (
-                      <div className="flex gap-2 justify-end">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setEditingUser(user.id)}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive"
-                          onClick={() => {
-                            if (confirm('Remove this user\'s role? They will lose all access.')) {
-                              deleteRoleMutation.mutate(user.id);
-                            }
-                          }}
-                        >
-                          Remove
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex gap-1 justify-end">
+                        {user.role === 'admin' ? (
+                          <Button variant="outline" size="sm" className="text-xs" onClick={() => toggleAdminMutation.mutate({ userId: user.id, makeAdmin: false })}>
+                            <ShieldOff className="h-3 w-3 mr-1" /> Remove Admin
+                          </Button>
+                        ) : (
+                          <Button variant="outline" size="sm" className="text-xs" onClick={() => toggleAdminMutation.mutate({ userId: user.id, makeAdmin: true })}>
+                            <ShieldCheck className="h-3 w-3 mr-1" /> Make Admin
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="sm" className="text-xs" onClick={() => setAccessDialogUser(user)}>
+                          Edit Access
                         </Button>
                       </div>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </CardContent>
+
+      {accessDialogUser && (
+        <DepartmentAccessEditor
+          open={!!accessDialogUser}
+          onOpenChange={(o) => { if (!o) setAccessDialogUser(null); }}
+          userName={accessDialogUser.email}
+          viewAccess={accessDialogUser.department_access}
+          editAccess={accessDialogUser.department_edit_access}
+          onSave={(viewAccess, editAccess) => {
+            saveAccessMutation.mutate({ userId: accessDialogUser.id, viewAccess, editAccess });
+            setAccessDialogUser(null);
+          }}
+        />
+      )}
     </Card>
   );
 }

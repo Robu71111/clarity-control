@@ -10,6 +10,7 @@ import { OperationsView } from '@/components/views/OperationsView';
 import { FinanceView } from '@/components/views/FinanceView';
 import { PerformanceView } from '@/components/views/PerformanceView';
 import { AdminView } from '@/components/views/AdminView';
+import { DateRangeFilter } from '@/components/shared/DateRangeFilter';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Shield, Menu } from 'lucide-react';
@@ -21,14 +22,12 @@ const Index = () => {
   const { canAccessView, isLoading, role } = useUserRole();
   const isMobile = useIsMobile();
 
-  // Reset to dashboard if user doesn't have access to current view
   useEffect(() => {
     if (!isLoading && activeView !== 'dashboard' && !canAccessView(activeView)) {
       setActiveView('dashboard');
     }
   }, [activeView, canAccessView, isLoading]);
 
-  // Close sidebar when switching views on mobile
   useEffect(() => {
     if (isMobile) setSidebarOpen(false);
   }, [activeView]);
@@ -85,7 +84,6 @@ const Index = () => {
         <Sidebar activeView={activeView} onViewChange={setActiveView} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <main className="md:pl-64">
           <div className="p-4 sm:p-8">
-            {/* Mobile header */}
             <div className="md:hidden mb-4">
               <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)}>
                 <Menu className="h-6 w-6" />
@@ -119,6 +117,10 @@ const Index = () => {
           <h1 className="font-semibold text-foreground">StaffTrack</h1>
         </div>
         <div className="p-4 sm:p-8">
+          {/* Global Date Range Filter */}
+          <div className="mb-6">
+            <DateRangeFilter />
+          </div>
           {renderView()}
         </div>
       </main>

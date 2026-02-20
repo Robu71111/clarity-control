@@ -1,27 +1,53 @@
 import { KPICard } from '@/components/dashboard/KPICard';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { KPICardsSkeleton } from '@/components/dashboard/LoadingSkeletons';
+import { DashboardCharts } from '@/components/dashboard/DashboardCharts';
+import { CustomChartRenderer } from '@/components/dashboard/CustomChartRenderer';
+import { ExportPDFButton } from '@/components/shared/ExportPDFButton';
 import { useOwnerKPIs, useQuickStats } from '@/hooks/useKPIs';
 import { useJobs } from '@/hooks/useJobs';
 import { useReceivablesAging } from '@/hooks/useFinance';
+import { useExportPDF } from '@/hooks/useExportPDF';
+import { useDateRange } from '@/contexts/DateRangeContext';
 import { AlertCircle, Clock, CheckCircle2, Users } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { format } from 'date-fns';
 
 export function DashboardView() {
   const { data: kpis, isLoading: kpisLoading } = useOwnerKPIs();
   const { data: stats, isLoading: statsLoading } = useQuickStats();
   const { data: jobs, isLoading: jobsLoading } = useJobs();
   const { data: agingData, isLoading: agingLoading } = useReceivablesAging();
+  const { exportToPDF } = useExportPDF();
+  const { startDate, endDate } = useDateRange();
 
   const highPriorityJobs = jobs?.filter(j => 
     j.priority === 'High' && j.status !== 'Filled' && j.status !== 'Closed - No Hire'
   ) || [];
 
+  const handleExport = () => {
+    const dateRange = `${format(startDate, 'MMM d')} - ${format(endDate, 'MMM d, yyyy')}`;
+    const kpiRows = kpis?.map(k => `<tr><td>${k.label}</td><td style="text-align:right;font-weight:600">${k.format === 'currency' ? '$' : ''}${k.thisWeek.toLocaleString()}${k.format === 'percent' ? '%' : ''}</td></tr>`).join('') || '';
+    const content = `
+      <div class="kpi-grid">
+        <div class="kpi-item"><div class="kpi-value">${stats?.activeClients || 0}</div><div class="kpi-label">Active Clients</div></div>
+        <div class="kpi-item"><div class="kpi-value">${stats?.activeJobs || 0}</div><div class="kpi-label">Active Jobs</div></div>
+        <div class="kpi-item"><div class="kpi-value">${stats?.filledJobs || 0}</div><div class="kpi-label">Filled This Month</div></div>
+      </div>
+      <h2 style="font-size:16px;margin-bottom:8px;">Performance Metrics</h2>
+      <table>${kpiRows}</table>
+    `;
+    exportToPDF('Owner Dashboard', dateRange, content);
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Owner Dashboard</h1>
-        <p className="text-muted-foreground">Weekly KPI snapshot • Live data</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Owner Dashboard</h1>
+          <p className="text-muted-foreground">Weekly KPI snapshot • Live data</p>
+        </div>
+        <ExportPDFButton onClick={handleExport} />
       </div>
 
       {statsLoading ? (
@@ -66,6 +92,15 @@ export function DashboardView() {
           </div>
         </div>
       )}
+
+      {/* Charts Section */}
+      <div>
+        <h2 className="text-lg font-semibold mb-4">Analytics</h2>
+        <DashboardCharts />
+      </div>
+
+      {/* Custom Charts from Admin */}
+      <CustomChartRenderer />
 
       <div>
         <h2 className="text-lg font-semibold mb-4">Performance Metrics</h2>

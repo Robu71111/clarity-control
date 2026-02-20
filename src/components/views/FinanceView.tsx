@@ -1,8 +1,12 @@
 import { DataTable } from '@/components/dashboard/DataTable';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { TableSkeleton, KPICardsSkeleton } from '@/components/dashboard/LoadingSkeletons';
+import { ExportPDFButton } from '@/components/shared/ExportPDFButton';
 import { useInvoices, usePayments, useReceivablesAging } from '@/hooks/useFinance';
+import { useExportPDF } from '@/hooks/useExportPDF';
+import { useDateRange } from '@/contexts/DateRangeContext';
 import { DollarSign, TrendingUp, AlertCircle } from 'lucide-react';
+import { format } from 'date-fns';
 
 interface InvoiceRow {
   id: string;
@@ -28,6 +32,8 @@ export function FinanceView() {
   const { data: invoices, isLoading: invoicesLoading } = useInvoices();
   const { data: payments, isLoading: paymentsLoading } = usePayments();
   const { data: agingData, isLoading: agingLoading } = useReceivablesAging();
+  const { exportToPDF } = useExportPDF();
+  const { startDate, endDate } = useDateRange();
 
   const isLoading = invoicesLoading || paymentsLoading || agingLoading;
 
@@ -45,6 +51,22 @@ export function FinanceView() {
   const totalOverdue = invoiceData.filter(i => i.status === 'Overdue').reduce((sum, i) => sum + i.amount, 0);
   const totalReceived = paymentData.reduce((sum, p) => sum + p.amount, 0);
   const totalAgingReceivables = agingData?.reduce((sum, r) => sum + r.total, 0) || 0;
+
+  const handleExport = () => {
+    const dateRange = `${format(startDate, 'MMM d')} - ${format(endDate, 'MMM d, yyyy')}`;
+    const content = `
+      <div class="kpi-grid">
+        <div class="kpi-item"><div class="kpi-value">$${(totalInvoiced / 1000).toFixed(0)}K</div><div class="kpi-label">Total Invoiced</div></div>
+        <div class="kpi-item"><div class="kpi-value">$${(totalReceived / 1000).toFixed(0)}K</div><div class="kpi-label">Received</div></div>
+        <div class="kpi-item"><div class="kpi-value">$${(totalOverdue / 1000).toFixed(0)}K</div><div class="kpi-label">Overdue</div></div>
+      </div>
+      <h2 style="font-size:16px;margin-bottom:8px;">Recent Invoices</h2>
+      <table><tr><th>Invoice</th><th>Client</th><th>Amount</th><th>Status</th></tr>
+      ${invoiceData.slice(0, 20).map(i => `<tr><td>${i.invoiceNo}</td><td>${i.clientName}</td><td style="text-align:right">$${i.amount.toLocaleString()}</td><td>${i.status}</td></tr>`).join('')}
+      </table>
+    `;
+    exportToPDF('Finance & Receivables', dateRange, content);
+  };
 
   const invoiceColumns = [
     { header: 'Invoice No', accessor: 'invoiceNo' as keyof InvoiceRow, className: 'font-mono text-xs' },
@@ -66,9 +88,12 @@ export function FinanceView() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Finance & Receivables</h1>
-        <p className="text-muted-foreground">Revenue tracking, invoicing, and collections</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Finance & Receivables</h1>
+          <p className="text-muted-foreground">Revenue tracking, invoicing, and collections</p>
+        </div>
+        <ExportPDFButton onClick={handleExport} />
       </div>
 
       {isLoading ? (
@@ -128,14 +153,8 @@ export function FinanceView() {
       </div>
 
       <div className="space-y-6">
-        <div>
-          <h3 className="font-semibold mb-4">Invoice Tracker</h3>
-          {invoicesLoading ? <TableSkeleton rows={5} /> : <DataTable columns={invoiceColumns} data={invoiceData} keyField="id" />}
-        </div>
-        <div>
-          <h3 className="font-semibold mb-4">Payment Receipt Log</h3>
-          {paymentsLoading ? <TableSkeleton rows={5} /> : <DataTable columns={paymentColumns} data={paymentData} keyField="id" />}
-        </div>
+        <div><h3 className="font-semibold mb-4">Invoice Tracker</h3>{invoicesLoading ? <TableSkeleton rows={5} /> : <DataTable columns={invoiceColumns} data={invoiceData} keyField="id" />}</div>
+        <div><h3 className="font-semibold mb-4">Payment Receipt Log</h3>{paymentsLoading ? <TableSkeleton rows={5} /> : <DataTable columns={paymentColumns} data={paymentData} keyField="id" />}</div>
       </div>
     </div>
   );

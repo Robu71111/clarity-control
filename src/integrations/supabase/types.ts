@@ -198,6 +198,48 @@ export type Database = {
           },
         ]
       }
+      custom_charts: {
+        Row: {
+          aggregate: string
+          chart_type: string
+          created_at: string | null
+          data_source: string
+          display_order: number | null
+          group_by: string | null
+          id: string
+          is_active: boolean | null
+          metric_field: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          aggregate?: string
+          chart_type?: string
+          created_at?: string | null
+          data_source: string
+          display_order?: number | null
+          group_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          metric_field: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          aggregate?: string
+          chart_type?: string
+          created_at?: string | null
+          data_source?: string
+          display_order?: number | null
+          group_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          metric_field?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       custom_kpi_fields: {
         Row: {
           created_at: string
@@ -569,6 +611,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          display_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      record_comments: {
+        Row: {
+          comment: string
+          created_at: string | null
+          id: string
+          record_id: string
+          table_name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          comment: string
+          created_at?: string | null
+          id?: string
+          record_id: string
+          table_name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string | null
+          id?: string
+          record_id?: string
+          table_name?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       recruiter_activities: {
         Row: {

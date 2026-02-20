@@ -6,6 +6,7 @@ import { ExcelUpload } from '@/components/admin/ExcelUpload';
 import { UserManagement } from '@/components/admin/UserManagement';
 import { DataManagement } from '@/components/admin/DataManagement';
 import { ActivityLogs } from '@/components/admin/ActivityLogs';
+import { CustomChartsManager } from '@/components/admin/CustomChartsManager';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const DEPARTMENTS = [
@@ -23,13 +24,14 @@ export function AdminView() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Admin Panel</h1>
-        <p className="text-muted-foreground">Manage users, data, KPIs and activity logs</p>
+        <p className="text-muted-foreground">Manage users, data, KPIs, charts and activity logs</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex flex-wrap">
           <TabsTrigger value="data">Data Management</TabsTrigger>
           <TabsTrigger value="kpis">KPI Manager</TabsTrigger>
+          <TabsTrigger value="charts">Charts</TabsTrigger>
           <TabsTrigger value="users">User Management</TabsTrigger>
           <TabsTrigger value="logs">Activity Logs</TabsTrigger>
         </TabsList>
@@ -80,6 +82,10 @@ export function AdminView() {
               </TabsContent>
             ))}
           </Tabs>
+        </TabsContent>
+
+        <TabsContent value="charts" className="mt-6">
+          <CustomChartsManager />
         </TabsContent>
 
         <TabsContent value="data" className="mt-6">

@@ -9,6 +9,7 @@ interface UserRole {
   user_id: string;
   role: AppRole;
   department_access: string[];
+  department_edit_access: string[];
   created_at: string;
   updated_at: string;
 }
@@ -46,7 +47,7 @@ export function useUserRole() {
         .maybeSingle();
 
       if (error) throw error;
-      return data as UserRole | null;
+      return data as unknown as UserRole | null;
     },
     enabled: !!user?.id,
   });
@@ -54,6 +55,7 @@ export function useUserRole() {
   const isAdmin = userRole?.role === 'admin';
   const role = userRole?.role ?? null;
   const departmentAccess = userRole?.department_access ?? [];
+  const departmentEditAccess = userRole?.department_edit_access ?? [];
 
   const canAccessView = (viewId: string): boolean => {
     if (isAdmin) return true;
@@ -75,8 +77,8 @@ export function useUserRole() {
     if (isAdmin) return true;
     if (!role) return false;
 
-    // Check if any of the user's department_access grants edit rights to this table
-    return departmentAccess.some(dept => {
+    // Check if any of the user's department_edit_access grants edit rights to this table
+    return departmentEditAccess.some(dept => {
       const allowedTables = DEPARTMENT_EDIT_MAP[dept] ?? [];
       return allowedTables.includes(tableName);
     });

@@ -28,9 +28,9 @@ export function AdminView() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex flex-wrap">
-          <TabsTrigger value="users">User Management</TabsTrigger>
-          <TabsTrigger value="kpis">KPI Fields</TabsTrigger>
           <TabsTrigger value="data">Data Management</TabsTrigger>
+          <TabsTrigger value="kpis">KPI Manager</TabsTrigger>
+          <TabsTrigger value="users">User Management</TabsTrigger>
           <TabsTrigger value="logs">Activity Logs</TabsTrigger>
         </TabsList>
 

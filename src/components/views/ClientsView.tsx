@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { DataTable } from '@/components/dashboard/DataTable';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { TableSkeleton, KPICardsSkeleton } from '@/components/dashboard/LoadingSkeletons';
 import { CustomFieldsDisplay } from '@/components/dashboard/CustomFieldsDisplay';
+import { CommentsPanel } from '@/components/shared/CommentsPanel';
 import { useClients } from '@/hooks/useClients';
-import { Building2 } from 'lucide-react';
+import { Building2, MessageSquare } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ClientRow {
   id: string;
@@ -18,6 +21,8 @@ interface ClientRow {
 
 export function ClientsView() {
   const { data: clients, isLoading } = useClients();
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<{ id: string; name: string } | null>(null);
 
   const tableData: ClientRow[] = clients?.map(c => ({
     id: c.id,
@@ -56,6 +61,14 @@ export function ClientsView() {
       ),
       className: 'text-right'
     },
+    {
+      header: '',
+      accessor: (item: ClientRow) => (
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setSelectedClient({ id: item.id, name: item.name }); setCommentsOpen(true); }}>
+          <MessageSquare className="h-3.5 w-3.5" />
+        </Button>
+      ),
+    },
   ];
 
   const totalOutstanding = tableData.reduce((sum, c) => sum + c.outstanding, 0);
@@ -72,31 +85,19 @@ export function ClientsView() {
         <KPICardsSkeleton count={4} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="kpi-card">
-            <p className="text-sm text-muted-foreground">Total Clients</p>
-            <p className="text-2xl font-bold mt-1">{tableData.length}</p>
-          </div>
-          <div className="kpi-card">
-            <p className="text-sm text-muted-foreground">Active Clients</p>
-            <p className="text-2xl font-bold mt-1 text-success">{activeClients}</p>
-          </div>
-          <div className="kpi-card">
-            <p className="text-sm text-muted-foreground">On Hold</p>
-            <p className="text-2xl font-bold mt-1 text-warning">{tableData.filter(c => c.status === 'Hold').length}</p>
-          </div>
-          <div className="kpi-card">
-            <p className="text-sm text-muted-foreground">Total Outstanding</p>
-            <p className="text-2xl font-bold mt-1">${totalOutstanding.toLocaleString()}</p>
-          </div>
+          <div className="kpi-card"><p className="text-sm text-muted-foreground">Total Clients</p><p className="text-2xl font-bold mt-1">{tableData.length}</p></div>
+          <div className="kpi-card"><p className="text-sm text-muted-foreground">Active Clients</p><p className="text-2xl font-bold mt-1 text-success">{activeClients}</p></div>
+          <div className="kpi-card"><p className="text-sm text-muted-foreground">On Hold</p><p className="text-2xl font-bold mt-1 text-warning">{tableData.filter(c => c.status === 'Hold').length}</p></div>
+          <div className="kpi-card"><p className="text-sm text-muted-foreground">Total Outstanding</p><p className="text-2xl font-bold mt-1">${totalOutstanding.toLocaleString()}</p></div>
         </div>
       )}
 
       <CustomFieldsDisplay department="Account Manager" />
 
-      {isLoading ? (
-        <TableSkeleton rows={6} />
-      ) : (
-        <DataTable columns={columns} data={tableData} keyField="id" />
+      {isLoading ? <TableSkeleton rows={6} /> : <DataTable columns={columns} data={tableData} keyField="id" />}
+
+      {selectedClient && (
+        <CommentsPanel open={commentsOpen} onOpenChange={setCommentsOpen} tableName="clients" recordId={selectedClient.id} recordTitle={selectedClient.name} />
       )}
     </div>
   );

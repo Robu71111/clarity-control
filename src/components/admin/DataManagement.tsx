@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { CRUDDialog, FieldDefinition } from '@/components/shared/CRUDDialog';
 import { useClients, useCreateClient, useUpdateClient, useDeleteClient } from '@/hooks/useClients';
 import { useJobs, useCreateJob, useUpdateJob, useDeleteJob } from '@/hooks/useJobs';
@@ -58,23 +60,13 @@ function InlineAddForm({ fields, onSubmit, label }: { fields: FieldDefinition[];
               <Label className="text-xs">{field.label}{field.required && ' *'}</Label>
               {field.type === 'select' ? (
                 <Select value={values[field.name] || ''} onValueChange={v => setValues(prev => ({ ...prev, [field.name]: v }))}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder={`Select ${field.label}`} />
-                  </SelectTrigger>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={`Select ${field.label}`} /></SelectTrigger>
                   <SelectContent>
-                    {field.options?.map(o => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                    ))}
+                    {field.options?.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               ) : (
-                <Input
-                  type={field.type === 'number' ? 'number' : 'text'}
-                  value={values[field.name] || ''}
-                  onChange={e => setValues(prev => ({ ...prev, [field.name]: e.target.value }))}
-                  placeholder={field.placeholder || field.label}
-                  className="h-8 text-xs"
-                />
+                <Input type={field.type === 'number' ? 'number' : 'text'} value={values[field.name] || ''} onChange={e => setValues(prev => ({ ...prev, [field.name]: e.target.value }))} placeholder={field.placeholder || field.label} className="h-8 text-xs" />
               )}
             </div>
           ))}
@@ -91,6 +83,7 @@ export function DataManagement() {
   const [activeModule, setActiveModule] = useState<Module>('clients');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<Record<string, string> | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { data: clients, isLoading: cl, refetch: rc } = useClients();
   const cc = useCreateClient(); const uc = useUpdateClient(); const dc = useDeleteClient();
@@ -186,6 +179,37 @@ export function DataManagement() {
 
   const config = configs[activeModule];
 
+  // Reset selection when switching modules
+  const handleModuleChange = (v: string) => {
+    setActiveModule(v as Module);
+    setSelectedIds(new Set());
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === config.data.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(config.data.map((r: any) => r.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    for (const id of ids) {
+      config.onDelete(id);
+    }
+    setSelectedIds(new Set());
+    toast({ title: `${ids.length} record(s) deleted` });
+  };
+
   const handleEdit = (record: any) => {
     const values: Record<string, string> = { id: record.id };
     config.fields.forEach(f => { values[f.name] = String(record[f.name] ?? ''); });
@@ -206,7 +230,7 @@ export function DataManagement() {
         <h2 className="text-lg font-semibold">Data Management</h2>
       </div>
 
-      <Tabs value={activeModule} onValueChange={v => setActiveModule(v as Module)}>
+      <Tabs value={activeModule} onValueChange={handleModuleChange}>
         <TabsList className="flex flex-wrap h-auto">
           {Object.entries(configs).map(([key, c]) => (
             <TabsTrigger key={key} value={key} className="text-xs sm:text-sm">{c.label}</TabsTrigger>
@@ -216,6 +240,31 @@ export function DataManagement() {
         {Object.entries(configs).map(([key, c]) => (
           <TabsContent key={key} value={key} className="mt-4 space-y-4">
             <InlineAddForm fields={c.fields} onSubmit={c.onAdd} label={c.label} />
+
+            {/* Bulk Actions Bar */}
+            {selectedIds.size > 0 && key !== 'invoices' && (
+              <div className="flex items-center gap-3 p-3 bg-accent/10 rounded-lg border border-accent/20">
+                <span className="text-sm font-medium">{selectedIds.size} selected</span>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm">
+                      <Trash2 className="h-3 w-3 mr-1" /> Delete Selected
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete {selectedIds.size} record(s)?</AlertDialogTitle>
+                      <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleBulkDelete}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>Clear Selection</Button>
+              </div>
+            )}
 
             <Card>
               <CardHeader className="pb-3">
@@ -234,6 +283,14 @@ export function DataManagement() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          {key !== 'invoices' && (
+                            <TableHead className="w-10">
+                              <Checkbox
+                                checked={c.data.length > 0 && selectedIds.size === c.data.length}
+                                onCheckedChange={toggleSelectAll}
+                              />
+                            </TableHead>
+                          )}
                           {c.columns.map(col => (
                             <TableHead key={col} className="text-xs capitalize">{col.replace(/_/g, ' ')}</TableHead>
                           ))}
@@ -243,11 +300,19 @@ export function DataManagement() {
                       <TableBody>
                         {c.data.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={c.columns.length + 1} className="text-center py-6 text-muted-foreground text-sm">No records found</TableCell>
+                            <TableCell colSpan={c.columns.length + (key !== 'invoices' ? 2 : 1)} className="text-center py-6 text-muted-foreground text-sm">No records found</TableCell>
                           </TableRow>
                         ) : (
                           c.data.map((record: any) => (
-                            <TableRow key={record.id}>
+                            <TableRow key={record.id} className={selectedIds.has(record.id) ? 'bg-accent/5' : ''}>
+                              {key !== 'invoices' && (
+                                <TableCell className="w-10">
+                                  <Checkbox
+                                    checked={selectedIds.has(record.id)}
+                                    onCheckedChange={() => toggleSelect(record.id)}
+                                  />
+                                </TableCell>
+                              )}
                               {c.columns.map(col => (
                                 <TableCell key={col} className="text-xs max-w-[180px] truncate">
                                   {typeof record[col] === 'boolean' ? (record[col] ? 'Yes' : 'No') : String(record[col] ?? '-')}

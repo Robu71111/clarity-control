@@ -1,6 +1,8 @@
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useProfile } from '@/hooks/useProfile';
+import { useTheme } from 'next-themes';
 import { 
   LayoutDashboard, 
   Users, 
@@ -14,7 +16,9 @@ import {
   Building2,
   LogOut,
   UserCog,
-  X
+  X,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -41,6 +45,8 @@ const navItems = [
 export function Sidebar({ activeView, onViewChange, isOpen, onClose }: SidebarProps) {
   const { user, signOut } = useAuth();
   const { role, isAdmin, canAccessView, isLoading } = useUserRole();
+  const { data: profile } = useProfile();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -52,15 +58,19 @@ export function Sidebar({ activeView, onViewChange, isOpen, onClose }: SidebarPr
     onClose?.();
   };
 
-  // Filter nav items based on user permissions
   const visibleNavItems = navItems.filter((item) => {
     if (isLoading) return true;
     return canAccessView(item.id);
   });
 
+  const displayName = profile?.display_name || user?.email || 'User';
+  const avatarUrl = profile?.avatar_url;
+  const initials = profile?.display_name
+    ? profile.display_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : user?.email?.slice(0, 2).toUpperCase() || 'U';
+
   return (
     <>
-      {/* Mobile overlay */}
       {isOpen && (
         <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={onClose} />
       )}
@@ -110,16 +120,25 @@ export function Sidebar({ activeView, onViewChange, isOpen, onClose }: SidebarPr
 
           {/* Footer */}
           <div className="px-4 py-4 border-t border-sidebar-border space-y-3">
+            {/* Theme Toggle */}
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="nav-item w-full"
+            >
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+            </button>
+
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center">
-                <span className="text-sm font-medium text-sidebar-foreground">
-                  {user?.email?.slice(0, 2).toUpperCase() || 'U'}
-                </span>
-              </div>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" className="h-8 w-8 rounded-full object-cover" />
+              ) : (
+                <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center">
+                  <span className="text-sm font-medium text-sidebar-foreground">{initials}</span>
+                </div>
+              )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-sidebar-foreground truncate">
-                  {user?.email || 'User'}
-                </p>
+                <p className="text-sm font-medium text-sidebar-foreground truncate">{displayName}</p>
                 <p className="text-xs text-sidebar-muted">
                   {isAdmin ? 'Admin' : role ? role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'No Role'}
                 </p>

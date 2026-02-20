@@ -4,6 +4,7 @@ import { RecruiterWeeklyTable } from '@/components/dashboard/RecruiterWeeklyTabl
 import { EditableTarget } from '@/components/dashboard/EditableTarget';
 import { DataTable } from '@/components/dashboard/DataTable';
 import { TableSkeleton, KPICardsSkeleton } from '@/components/dashboard/LoadingSkeletons';
+import { CustomFieldsDisplay } from '@/components/dashboard/CustomFieldsDisplay';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -51,7 +52,6 @@ export function RecruitersView() {
     await updateTarget.mutateAsync({ id, target_value: value });
   };
 
-  // Transform activities for table with new columns
   const tableData: ActivityRow[] = activities?.map(a => ({
     id: a.id,
     date: a.activity_date,
@@ -122,56 +122,26 @@ export function RecruitersView() {
         </Dialog>
       </div>
 
-      {/* KPI Summary Cards */}
       {isLoading ? (
         <KPICardsSkeleton count={6} />
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <KPIProgressCard
-            title="Open Positions"
-            value={kpiData?.summary.totalOpenPositions || 0}
-            target={getTarget('Open Positions Worked On').value}
-          />
-          <KPIProgressCard
-            title="Job Coverage"
-            value={kpiData?.summary.avgJobCoverageRatio || 0}
-            target={getTarget('Job Coverage Ratio').value}
-            format="percentage"
-          />
-          <KPIProgressCard
-            title="AM Submissions"
-            value={kpiData?.summary.totalAMSubmissions || 0}
-            target={getTarget('AM Submissions').value}
-          />
-          <KPIProgressCard
-            title="EC Submissions"
-            value={kpiData?.summary.totalEndClientSubmissions || 0}
-            target={getTarget('End Client Submissions').value}
-          />
-          <KPIProgressCard
-            title="Interviews"
-            value={kpiData?.summary.totalInterviews || 0}
-            target={getTarget('Interviews').value}
-          />
-          <KPIProgressCard
-            title="Hired"
-            value={kpiData?.summary.totalHired || 0}
-            target={getTarget('Hired').value}
-          />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <KPIProgressCard title="Open Positions" value={kpiData?.summary.totalOpenPositions || 0} target={getTarget('Open Positions Worked On').value} />
+          <KPIProgressCard title="Job Coverage" value={kpiData?.summary.avgJobCoverageRatio || 0} target={getTarget('Job Coverage Ratio').value} format="percentage" />
+          <KPIProgressCard title="AM Submissions" value={kpiData?.summary.totalAMSubmissions || 0} target={getTarget('AM Submissions').value} />
+          <KPIProgressCard title="EC Submissions" value={kpiData?.summary.totalEndClientSubmissions || 0} target={getTarget('End Client Submissions').value} />
+          <KPIProgressCard title="Interviews" value={kpiData?.summary.totalInterviews || 0} target={getTarget('Interviews').value} />
+          <KPIProgressCard title="Hired" value={kpiData?.summary.totalHired || 0} target={getTarget('Hired').value} />
         </div>
       )}
 
-      {/* Weekly Stats by Recruiter */}
+      <CustomFieldsDisplay department="Recruiter" />
+
       <div className="bg-card rounded-xl border border-border p-5">
         <h3 className="font-semibold mb-4">Weekly Stats by Recruiter</h3>
-        <RecruiterWeeklyTable
-          recruiters={kpiData?.recruiters || []}
-          targets={targets}
-          isLoading={isLoading}
-        />
+        <RecruiterWeeklyTable recruiters={kpiData?.recruiters || []} targets={targets} isLoading={isLoading} />
       </div>
 
-      {/* Daily Activity Report */}
       <div>
         <h3 className="font-semibold mb-4">Daily Activity Report</h3>
         {activitiesLoading ? (

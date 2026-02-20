@@ -4,6 +4,8 @@ import { CustomFieldsManager } from '@/components/admin/CustomFieldsManager';
 import { ExcelTemplateDownload } from '@/components/admin/ExcelTemplateDownload';
 import { ExcelUpload } from '@/components/admin/ExcelUpload';
 import { UserManagement } from '@/components/admin/UserManagement';
+import { DataManagement } from '@/components/admin/DataManagement';
+import { ActivityLogs } from '@/components/admin/ActivityLogs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const DEPARTMENTS = [
@@ -21,13 +23,15 @@ export function AdminView() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Admin Panel</h1>
-        <p className="text-muted-foreground">Manage users, roles, KPIs and custom fields</p>
+        <p className="text-muted-foreground">Manage users, data, KPIs and activity logs</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
+        <TabsList className="flex flex-wrap">
           <TabsTrigger value="users">User Management</TabsTrigger>
           <TabsTrigger value="kpis">KPI Fields</TabsTrigger>
+          <TabsTrigger value="data">Data Management</TabsTrigger>
+          <TabsTrigger value="logs">Activity Logs</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="mt-6">
@@ -36,7 +40,7 @@ export function AdminView() {
 
         <TabsContent value="kpis" className="mt-6 space-y-6">
           <Tabs value={activeDepartment} onValueChange={setActiveDepartment}>
-            <TabsList className="grid grid-cols-4 w-full max-w-2xl">
+            <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full max-w-2xl">
               {DEPARTMENTS.map((dept) => (
                 <TabsTrigger key={dept} value={dept} className="text-xs sm:text-sm">
                   {dept.replace('Manager', 'Mgr')}
@@ -76,6 +80,14 @@ export function AdminView() {
               </TabsContent>
             ))}
           </Tabs>
+        </TabsContent>
+
+        <TabsContent value="data" className="mt-6">
+          <DataManagement />
+        </TabsContent>
+
+        <TabsContent value="logs" className="mt-6">
+          <ActivityLogs />
         </TabsContent>
       </Tabs>
     </div>

@@ -13,6 +13,24 @@ interface UserRole {
   updated_at: string;
 }
 
+// Maps department_access values to which views they unlock
+const DEPARTMENT_VIEW_MAP: Record<string, string[]> = {
+  'Recruiter': ['recruiters'],
+  'Account Manager': ['clients', 'jobs', 'account-managers'],
+  'Business Development': ['business-dev'],
+  'Operations Manager': ['operations', 'performance'],
+  'Finance': ['finance'],
+};
+
+// Maps department_access values to which tables they can edit
+const DEPARTMENT_EDIT_MAP: Record<string, string[]> = {
+  'Recruiter': ['recruiter_activities'],
+  'Account Manager': ['clients', 'jobs', 'job_recruiters', 'am_activities'],
+  'Business Development': ['bd_prospects'],
+  'Operations Manager': ['employee_scores'],
+  'Finance': ['invoices', 'payments'],
+};
+
 export function useUserRole() {
   const { user } = useAuth();
 
@@ -41,46 +59,27 @@ export function useUserRole() {
     if (isAdmin) return true;
     if (!role) return false;
 
-    const viewPermissions: Record<string, AppRole[]> = {
-      'dashboard': ['admin', 'account_manager', 'recruiter', 'business_dev', 'operations', 'finance', 'viewer'],
-      'clients': ['admin', 'account_manager', 'finance'],
-      'jobs': ['admin', 'account_manager', 'recruiter'],
-      'recruiters': ['admin', 'recruiter', 'operations'],
-      'account-managers': ['admin', 'account_manager', 'operations'],
-      'business-dev': ['admin', 'business_dev'],
-      'operations': ['admin', 'operations'],
-      'finance': ['admin', 'finance'],
-      'performance': ['admin', 'operations'],
-      'admin': ['admin'],
-    };
+    // Dashboard is always accessible
+    if (viewId === 'dashboard') return true;
+    // Admin view is only for admin role
+    if (viewId === 'admin') return false;
 
-    const allowedRoles = viewPermissions[viewId] ?? [];
-    return allowedRoles.includes(role);
+    // Check if any of the user's department_access grants access to this view
+    return departmentAccess.some(dept => {
+      const allowedViews = DEPARTMENT_VIEW_MAP[dept] ?? [];
+      return allowedViews.includes(viewId);
+    });
   };
 
   const canEdit = (tableName: string): boolean => {
     if (isAdmin) return true;
     if (!role) return false;
 
-    const editPermissions: Record<string, AppRole[]> = {
-      'employees': ['admin'],
-      'clients': ['admin', 'account_manager'],
-      'jobs': ['admin', 'account_manager'],
-      'job_recruiters': ['admin', 'account_manager'],
-      'recruiter_activities': ['admin', 'recruiter'],
-      'am_activities': ['admin', 'account_manager'],
-      'bd_prospects': ['admin', 'business_dev'],
-      'invoices': ['admin', 'finance'],
-      'payments': ['admin', 'finance'],
-      'employee_scores': ['admin', 'operations'],
-      'kpi_targets': ['admin'],
-      'custom_kpi_fields': ['admin'],
-      'custom_kpi_values': ['admin'],
-      'user_roles': ['admin'],
-    };
-
-    const allowedRoles = editPermissions[tableName] ?? [];
-    return allowedRoles.includes(role);
+    // Check if any of the user's department_access grants edit rights to this table
+    return departmentAccess.some(dept => {
+      const allowedTables = DEPARTMENT_EDIT_MAP[dept] ?? [];
+      return allowedTables.includes(tableName);
+    });
   };
 
   const canDelete = (tableName: string): boolean => {

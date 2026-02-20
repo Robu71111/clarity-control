@@ -19,17 +19,15 @@ export function DashboardView() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground">Owner Dashboard</h1>
         <p className="text-muted-foreground">Weekly KPI snapshot • Live data</p>
       </div>
 
-      {/* Quick Stats */}
       {statsLoading ? (
         <KPICardsSkeleton count={4} />
       ) : (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="kpi-card flex items-center gap-4">
             <div className="h-12 w-12 rounded-lg bg-accent/10 flex items-center justify-center">
               <Users className="h-6 w-6 text-accent" />
@@ -69,11 +67,10 @@ export function DashboardView() {
         </div>
       )}
 
-      {/* KPI Grid */}
       <div>
         <h2 className="text-lg font-semibold mb-4">Performance Metrics</h2>
         {kpisLoading ? (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 9 }).map((_, i) => (
               <div key={i} className="kpi-card">
                 <Skeleton className="h-4 w-24 mb-2" />
@@ -82,23 +79,15 @@ export function DashboardView() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {kpis?.map((kpi, idx) => (
-              <KPICard
-                key={idx}
-                label={kpi.label}
-                thisWeek={kpi.thisWeek}
-                lastWeek={kpi.lastWeek}
-                format={kpi.format}
-              />
+              <KPICard key={idx} label={kpi.label} thisWeek={kpi.thisWeek} lastWeek={kpi.lastWeek} format={kpi.format} />
             ))}
           </div>
         )}
       </div>
 
-      {/* Priority Jobs & Receivables */}
-      <div className="grid grid-cols-2 gap-6">
-        {/* High Priority Jobs */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-card rounded-xl border border-border p-5">
           <h3 className="font-semibold mb-4 flex items-center gap-2">
             <AlertCircle className="h-4 w-4 text-destructive" />
@@ -106,9 +95,7 @@ export function DashboardView() {
           </h3>
           {jobsLoading ? (
             <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
+              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
             </div>
           ) : (
             <div className="space-y-3">
@@ -118,9 +105,7 @@ export function DashboardView() {
                     <p className="font-medium text-sm">{job.title}</p>
                     <p className="text-xs text-muted-foreground">{job.client?.name || 'Unknown Client'}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <StatusBadge status={job.status} />
-                  </div>
+                  <StatusBadge status={job.status} />
                 </div>
               ))}
               {highPriorityJobs.length === 0 && (
@@ -130,14 +115,11 @@ export function DashboardView() {
           )}
         </div>
 
-        {/* Receivables Aging */}
         <div className="bg-card rounded-xl border border-border p-5">
           <h3 className="font-semibold mb-4">Receivables Aging Summary</h3>
           {agingLoading ? (
             <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
+              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
             </div>
           ) : (
             <div className="space-y-3">
@@ -145,18 +127,16 @@ export function DashboardView() {
                 <div key={idx} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                   <div>
                     <p className="font-medium text-sm">{item.clientName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Total: ${item.total.toLocaleString()}
-                    </p>
+                    <p className="text-xs text-muted-foreground">Total: ${item.total.toLocaleString()}</p>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right flex flex-wrap gap-1 justify-end">
                     {item.days60plus > 0 && (
                       <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">
                         ${item.days60plus.toLocaleString()} (60+)
                       </span>
                     )}
                     {item.days31to60 > 0 && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning ml-1">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning">
                         ${item.days31to60.toLocaleString()} (31-60)
                       </span>
                     )}

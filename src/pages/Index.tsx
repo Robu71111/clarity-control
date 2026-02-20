@@ -11,11 +11,15 @@ import { FinanceView } from '@/components/views/FinanceView';
 import { PerformanceView } from '@/components/views/PerformanceView';
 import { AdminView } from '@/components/views/AdminView';
 import { useUserRole } from '@/hooks/useUserRole';
-import { Shield } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Shield, Menu } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const Index = () => {
   const [activeView, setActiveView] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { canAccessView, isLoading, role } = useUserRole();
+  const isMobile = useIsMobile();
 
   // Reset to dashboard if user doesn't have access to current view
   useEffect(() => {
@@ -24,8 +28,12 @@ const Index = () => {
     }
   }, [activeView, canAccessView, isLoading]);
 
+  // Close sidebar when switching views on mobile
+  useEffect(() => {
+    if (isMobile) setSidebarOpen(false);
+  }, [activeView]);
+
   const renderView = () => {
-    // Check access permission (dashboard is always accessible)
     if (!isLoading && activeView !== 'dashboard' && !canAccessView(activeView)) {
       return (
         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -39,38 +47,26 @@ const Index = () => {
     }
 
     switch (activeView) {
-      case 'dashboard':
-        return <DashboardView />;
-      case 'clients':
-        return <ClientsView />;
-      case 'jobs':
-        return <JobsView />;
-      case 'recruiters':
-        return <RecruitersView />;
-      case 'account-managers':
-        return <AccountManagersView />;
-      case 'business-dev':
-        return <BusinessDevView />;
-      case 'operations':
-        return <OperationsView />;
-      case 'finance':
-        return <FinanceView />;
-      case 'performance':
-        return <PerformanceView />;
-      case 'admin':
-        return <AdminView />;
-      default:
-        return <DashboardView />;
+      case 'dashboard': return <DashboardView />;
+      case 'clients': return <ClientsView />;
+      case 'jobs': return <JobsView />;
+      case 'recruiters': return <RecruitersView />;
+      case 'account-managers': return <AccountManagersView />;
+      case 'business-dev': return <BusinessDevView />;
+      case 'operations': return <OperationsView />;
+      case 'finance': return <FinanceView />;
+      case 'performance': return <PerformanceView />;
+      case 'admin': return <AdminView />;
+      default: return <DashboardView />;
     }
   };
 
-  // Show loading state while checking permissions
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Sidebar activeView={activeView} onViewChange={setActiveView} />
-        <main className="pl-64">
-          <div className="p-8 flex items-center justify-center min-h-[50vh]">
+        <Sidebar activeView={activeView} onViewChange={setActiveView} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <main className="md:pl-64">
+          <div className="p-4 sm:p-8 flex items-center justify-center min-h-[50vh]">
             <div className="text-center space-y-4">
               <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center mx-auto animate-pulse">
                 <div className="h-4 w-4 rounded bg-primary/30" />
@@ -83,13 +79,18 @@ const Index = () => {
     );
   }
 
-  // Show message if user has no role assigned
   if (!role) {
     return (
       <div className="min-h-screen bg-background">
-        <Sidebar activeView={activeView} onViewChange={setActiveView} />
-        <main className="pl-64">
-          <div className="p-8">
+        <Sidebar activeView={activeView} onViewChange={setActiveView} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <main className="md:pl-64">
+          <div className="p-4 sm:p-8">
+            {/* Mobile header */}
+            <div className="md:hidden mb-4">
+              <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)}>
+                <Menu className="h-6 w-6" />
+              </Button>
+            </div>
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Shield className="h-16 w-16 text-muted-foreground/30 mb-4" />
               <h2 className="text-xl font-semibold text-foreground mb-2">No Role Assigned</h2>
@@ -108,9 +109,16 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar activeView={activeView} onViewChange={setActiveView} />
-      <main className="pl-64">
-        <div className="p-8">
+      <Sidebar activeView={activeView} onViewChange={setActiveView} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <main className="md:pl-64">
+        {/* Mobile header */}
+        <div className="md:hidden sticky top-0 z-30 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)}>
+            <Menu className="h-6 w-6" />
+          </Button>
+          <h1 className="font-semibold text-foreground">StaffTrack</h1>
+        </div>
+        <div className="p-4 sm:p-8">
           {renderView()}
         </div>
       </main>

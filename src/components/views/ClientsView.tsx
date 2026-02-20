@@ -1,6 +1,7 @@
 import { DataTable } from '@/components/dashboard/DataTable';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { TableSkeleton, KPICardsSkeleton } from '@/components/dashboard/LoadingSkeletons';
+import { CustomFieldsDisplay } from '@/components/dashboard/CustomFieldsDisplay';
 import { useClients } from '@/hooks/useClients';
 import { Building2 } from 'lucide-react';
 
@@ -18,7 +19,6 @@ interface ClientRow {
 export function ClientsView() {
   const { data: clients, isLoading } = useClients();
 
-  // Transform data for table display
   const tableData: ClientRow[] = clients?.map(c => ({
     id: c.id,
     name: c.name,
@@ -45,14 +45,8 @@ export function ClientsView() {
     { header: 'Account Manager', accessor: 'accountManager' as keyof ClientRow },
     { header: 'Billing Type', accessor: 'billingType' as keyof ClientRow },
     { header: 'Payment Terms', accessor: 'paymentTerms' as keyof ClientRow },
-    { 
-      header: 'Status', 
-      accessor: (item: ClientRow) => <StatusBadge status={item.status} />
-    },
-    { 
-      header: 'Last Payment', 
-      accessor: (item: ClientRow) => item.lastPaymentDate || 'N/A'
-    },
+    { header: 'Status', accessor: (item: ClientRow) => <StatusBadge status={item.status} /> },
+    { header: 'Last Payment', accessor: (item: ClientRow) => item.lastPaymentDate || 'N/A' },
     { 
       header: 'Outstanding', 
       accessor: (item: ClientRow) => (
@@ -74,11 +68,10 @@ export function ClientsView() {
         <p className="text-muted-foreground">Single source of truth for all client information</p>
       </div>
 
-      {/* Summary Cards */}
       {isLoading ? (
         <KPICardsSkeleton count={4} />
       ) : (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="kpi-card">
             <p className="text-sm text-muted-foreground">Total Clients</p>
             <p className="text-2xl font-bold mt-1">{tableData.length}</p>
@@ -98,7 +91,8 @@ export function ClientsView() {
         </div>
       )}
 
-      {/* Client Table */}
+      <CustomFieldsDisplay department="Account Manager" />
+
       {isLoading ? (
         <TableSkeleton rows={6} />
       ) : (

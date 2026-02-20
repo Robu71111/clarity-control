@@ -21,7 +21,6 @@ interface JobRow {
 export function JobsView() {
   const { data: jobs, isLoading } = useJobs();
 
-  // Transform data for table display
   const tableData: JobRow[] = jobs?.map(j => ({
     id: j.id,
     clientName: j.client?.name || 'Unknown',
@@ -40,19 +39,14 @@ export function JobsView() {
     { header: 'Job ID', accessor: (item: JobRow) => item.id.slice(0, 8), className: 'font-mono text-xs' },
     { header: 'Client', accessor: 'clientName' as keyof JobRow },
     { header: 'Job Title', accessor: 'title' as keyof JobRow, className: 'font-medium' },
-    { 
-      header: 'Priority', 
-      accessor: (item: JobRow) => <PriorityBadge priority={item.priority} />
-    },
+    { header: 'Priority', accessor: (item: JobRow) => <PriorityBadge priority={item.priority} /> },
     { header: 'Open Date', accessor: 'openDate' as keyof JobRow },
     { 
       header: 'Recruiters', 
       accessor: (item: JobRow) => (
         <div className="flex flex-wrap gap-1">
           {item.recruiters.length > 0 ? item.recruiters.map((r, i) => (
-            <span key={i} className="text-xs bg-muted px-2 py-0.5 rounded">
-              {r.split(' ')[0]}
-            </span>
+            <span key={i} className="text-xs bg-muted px-2 py-0.5 rounded">{r.split(' ')[0]}</span>
           )) : <span className="text-xs text-muted-foreground">None</span>}
         </div>
       )
@@ -61,10 +55,7 @@ export function JobsView() {
     { header: 'Int', accessor: 'interviews' as keyof JobRow, className: 'text-center' },
     { header: 'Offers', accessor: 'offers' as keyof JobRow, className: 'text-center' },
     { header: 'Starts', accessor: 'starts' as keyof JobRow, className: 'text-center' },
-    { 
-      header: 'Status', 
-      accessor: (item: JobRow) => <StatusBadge status={item.status} />
-    },
+    { header: 'Status', accessor: (item: JobRow) => <StatusBadge status={item.status} /> },
   ];
 
   const statusCounts = {
@@ -81,11 +72,10 @@ export function JobsView() {
         <p className="text-muted-foreground">Track all jobs from open to placement</p>
       </div>
 
-      {/* Status Summary */}
       {isLoading ? (
         <KPICardsSkeleton count={4} />
       ) : (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="kpi-card">
             <p className="text-sm text-muted-foreground">Open Jobs</p>
             <p className="text-2xl font-bold mt-1 text-accent">{statusCounts.open}</p>
@@ -105,7 +95,6 @@ export function JobsView() {
         </div>
       )}
 
-      {/* Jobs Table */}
       {isLoading ? (
         <TableSkeleton rows={8} />
       ) : (
